@@ -26,24 +26,13 @@ DEBATE FORMAT CONTEXT:
 - PM and LO give main constructive cases (~8 min)
 - Whip speeches are summary/extension speeches (~4-5 min), NO new arguments
 
-FULL ROUND PRACTICE MODE — SPECIAL RULES:
-You are simulating a full parliamentary debate round as the opponent. The user is debating against you.
-
-Round structure:
-- Speech 1 (Bot): You deliver a full opening constructive case for your side (3 contentions, definitions, intro). Make it genuinely strong and challenging.
-- Speech 2 (User): User responds — they should refute your points AND defend their own position.
-- Speech 3 (Bot): You respond — attack what the user said, extend and reinforce YOUR own contentions, point out drops. Be aggressive but fair.
-- Speech 4 (User): User continues the clash — they reinforce their strongest points, attack your extensions.
-- Speech 5 (Bot — Whip): You give a whip/summary speech. Weigh the round, explain why your side wins on the key voters. No new arguments.
-- Speech 6 (User): User gives their whip — this is their last speech.
-
-After Speech 6, give a judge's critique: who won and why, what the user did well, what they dropped, what they should improve.
-
-Each of your speeches should be labeled clearly: "SPEECH 1 — [SIDE] CONSTRUCTIVE", "SPEECH 3 — [SIDE] REBUTTAL", "SPEECH 5 — [SIDE] WHIP".
-
-After each of your speeches, tell the user clearly what speech number they are on and what they should be doing (e.g. "This is your Speech 2 — respond to my case AND build your own position.").
-
-Be a genuinely tough opponent. Don't go easy. Point out drops explicitly. Make the user work for it.`;
+PRACTICE DEBATE MODE — SPECIAL RULES:
+When presenting opponent arguments in practice mode:
+- Present ONE opponent argument clearly and persuasively, as if you ARE the opponent. Make it genuinely challenging with Claim, Warrant, and Impact.
+- Do NOT provide any refutation, hint, or suggestion on how to beat the argument. Stop completely after presenting the argument.
+- Wait for the user to submit their own refutation attempt.
+- When the user submits their refutation, analyze it honestly: What did they do well? What was weak or missing? What arguments did they drop? Then show what an ideal refutation looks like — bullet summary first, then verbatim speech text.
+- Be direct and honest. Don't sugarcoat weak refutations.`;
 
 const s = {
   app: { display:"flex", flexDirection:"column", height:"100vh", fontFamily:"Georgia, serif", background:"#f8fafc", color:"#1e293b", margin:0 },
@@ -52,7 +41,7 @@ const s = {
   logo: { width:32, height:32, background:"#4f46e5", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:16 },
   headerTitle: { margin:0, fontSize:15, fontWeight:700, letterSpacing:"-0.02em" },
   headerSub: { margin:0, fontSize:11, color:"#94a3b8", fontFamily:"monospace" },
-  headerBadges: { display:"flex", gap:8, alignItems:"center" },
+  headerBadges: { display:"flex", gap:8 },
   badgeGov: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#dbeafe", color:"#1d4ed8", border:"1px solid #bfdbfe" },
   badgeOpp: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ffe4e6", color:"#be123c", border:"1px solid #fecdd3" },
   badgePractice: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fef3c7", color:"#92400e", border:"1px solid #fde68a" },
@@ -69,19 +58,24 @@ const s = {
   btnOppInactive: { padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
   select: { width:"100%", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 10px", fontSize:13, color:"#1e293b" },
   actionBtn: { textAlign:"left", padding:"8px 12px", borderRadius:8, fontSize:13, border:"1px solid #e2e8f0", background:"#fff", color:"#475569", cursor:"pointer", width:"100%", marginBottom:6 },
+  actionBtnPracticeActive: { textAlign:"left", padding:"8px 12px", borderRadius:8, fontSize:13, border:"1px solid #fde68a", background:"#fef3c7", color:"#92400e", cursor:"pointer", width:"100%", marginBottom:6, fontWeight:700 },
   exportBtn: { width:"100%", background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 0", fontSize:13, color:"#475569", cursor:"pointer" },
   chat: { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" },
   messages: { flex:1, overflowY:"auto", padding:"24px", display:"flex", flexDirection:"column", gap:16 },
   msgWrapUser: { display:"flex", justifyContent:"flex-end" },
   msgWrapAsst: { display:"flex", justifyContent:"flex-start" },
   msgUser: { maxWidth:560, background:"#4f46e5", color:"#fff", borderRadius:14, padding:"12px 16px", fontSize:13, lineHeight:1.6, marginLeft:80 },
-  msgAsst: { maxWidth:640, background:"#fff", border:"1px solid #e2e8f0", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
-  msgAsstOpponent: { maxWidth:640, background:"#fff5f5", border:"1px solid #fecdd3", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
-  msgAsstJudge: { maxWidth:640, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  msgAsst: { maxWidth:600, background:"#fff", border:"1px solid #e2e8f0", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  msgAsstPractice: { maxWidth:600, background:"#fff5f5", border:"1px solid #fecdd3", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  msgAsstFeedback: { maxWidth:600, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
   msgTag: { fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:8 },
   msgActions: { marginTop:12, paddingTop:10, borderTop:"1px solid #f1f5f9", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" },
+  msgActionsRose: { marginTop:12, paddingTop:10, borderTop:"1px solid #fecdd3", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" },
+  msgActionsGreen: { marginTop:12, paddingTop:10, borderTop:"1px solid #bbf7d0", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" },
   smallBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
+  smallBtnRed: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"none", background:"#e11d48", color:"#fff", cursor:"pointer", fontWeight:700 },
   smallBtnGray: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
+  practiceHint: { fontSize:11, color:"#e11d48", fontStyle:"italic" },
   loadingDot: { width:6, height:6, borderRadius:"50%", background:"#4f46e5", display:"inline-block", margin:"0 2px" },
   revBar: { padding:"12px 24px", background:"#fff", borderTop:"1px solid #e2e8f0" },
   revLabel: { fontSize:10, fontWeight:700, color:"#4f46e5", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:6 },
@@ -89,14 +83,15 @@ const s = {
   revBtnSend: { background:"#4f46e5", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer" },
   revBtnCancel: { background:"#fff", color:"#94a3b8", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 14px", fontSize:13, cursor:"pointer" },
   inputBar: { padding:"14px 24px", background:"#fff", borderTop:"1px solid #e2e8f0", flexShrink:0 },
-  speechLabel: { fontSize:11, color:"#e11d48", fontWeight:700, fontFamily:"monospace", marginBottom:6 },
+  practiceHintBar: { fontSize:11, color:"#e11d48", fontWeight:700, fontFamily:"monospace", marginBottom:6 },
   inputRow: { display:"flex", gap:10, alignItems:"flex-end" },
   inputTextarea: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:12, padding:"10px 14px", fontSize:13, color:"#1e293b", resize:"none", fontFamily:"Georgia, serif" },
   sendBtn: { background:"#4f46e5", color:"#fff", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"pointer" },
+  sendBtnRed: { background:"#e11d48", color:"#fff", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"pointer" },
   sendBtnDisabled: { background:"#f1f5f9", color:"#94a3b8", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"not-allowed" },
   inputHint: { fontSize:11, color:"#cbd5e1", marginTop:6, fontFamily:"monospace" },
 
-  // Landing
+  // Landing screen styles
   landing: { flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#f8fafc" },
   landingCard: { background:"#fff", borderRadius:20, padding:"48px 40px", boxShadow:"0 4px 24px rgba(0,0,0,0.08)", maxWidth:480, width:"100%", textAlign:"center" },
   landingIcon: { fontSize:52, marginBottom:16 },
@@ -108,7 +103,7 @@ const s = {
   landingBtnIcon: { fontSize:28 },
   landingBtnSub: { fontSize:11, fontWeight:400, opacity:0.75 },
 
-  // Practice setup
+  // Practice landing styles
   practiceLanding: { flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#f8fafc" },
   practiceLandingCard: { background:"#fff", borderRadius:20, padding:"40px 36px", boxShadow:"0 4px 24px rgba(0,0,0,0.08)", maxWidth:460, width:"100%", textAlign:"center" },
   practiceLandingTitle: { fontSize:20, fontWeight:700, margin:"0 0 8px 0" },
@@ -119,26 +114,11 @@ const s = {
   practiceResInput: { width:"100%", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 12px", fontSize:13, color:"#1e293b", fontFamily:"Georgia, serif", boxSizing:"border-box", marginBottom:10 },
   practiceResSubmit: { width:"100%", background:"#e11d48", color:"#fff", border:"none", borderRadius:10, padding:"10px 0", fontSize:13, fontWeight:700, cursor:"pointer" },
   backBtn: { background:"none", border:"none", color:"#94a3b8", fontSize:12, cursor:"pointer", marginTop:14, fontFamily:"Georgia, serif" },
-
-  // Speech tracker
-  speechTracker: { display:"flex", gap:6, flexWrap:"wrap" },
-  speechBubbleDone: { padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#dcfce7", color:"#15803d", border:"1px solid #bbf7d0" },
-  speechBubbleCurrent: { padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fef3c7", color:"#92400e", border:"1px solid #fde68a" },
-  speechBubblePending: { padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#f8fafc", color:"#cbd5e1", border:"1px solid #e2e8f0" },
 };
 
-const SPEECH_LABELS = [
-  "S1: Bot Opens",
-  "S2: Your Response",
-  "S3: Bot Rebuts",
-  "S4: Your Clash",
-  "S5: Bot Whip",
-  "S6: Your Whip",
-];
-
 export default function App() {
-  const [appMode, setAppMode] = useState("landing");
-  const [practiceResMode, setPracticeResMode] = useState(null);
+  const [appMode, setAppMode] = useState("landing"); // "landing" | "case" | "practice"
+  const [practiceResMode, setPracticeResMode] = useState(null); // null | "generate" | "custom"
   const [practiceCustomRes, setPracticeCustomRes] = useState("");
 
   const [resolution, setResolution] = useState("");
@@ -151,17 +131,16 @@ export default function App() {
   const [feedbackMode, setFeedbackMode] = useState(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [practiceMode, setPracticeMode] = useState(false);
-  const [speechNumber, setSpeechNumber] = useState(0); // 0 = not started, 1-6 = speech #
-  const [roundOver, setRoundOver] = useState(false);
+  const [practiceStage, setPracticeStage] = useState("idle");
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async (messageText, isFeedback = false) => {
+  const sendMessage = async (messageText, isFeedback = false, isPracticeRefutation = false) => {
     if (!messageText.trim()) return;
-    const userMsg = { role: "user", content: messageText, isFeedback };
+    const userMsg = { role: "user", content: messageText, isFeedback, isPracticeRefutation };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
@@ -170,7 +149,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const contextHeader = `RESOLUTION: "${resolution}"\nUSER SIDE: ${side === "gov" ? "Government" : "Opposition"}\nBOT SIDE: ${side === "gov" ? "Opposition" : "Government"}\nSPEECH MODE: Full Round Practice\nCURRENT SPEECH NUMBER: ${speechNumber}\n\n`;
+      const contextHeader = `RESOLUTION: "${resolution}"\nSIDE: ${side === "gov" ? "Government" : "Opposition"}\nSPEECH TYPE: ${speechType}\nPRACTICE MODE: ${practiceMode}\n\n`;
       const apiMessages = newMessages.map((m, i) => ({
         role: m.role,
         content: i === 0 ? contextHeader + m.content : m.content,
@@ -179,28 +158,22 @@ export default function App() {
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: SYSTEM_PROMPT, messages: apiMessages }),
+        body: JSON.stringify({
+          system: SYSTEM_PROMPT,
+          messages: apiMessages,
+        }),
       });
 
       const data = await res.json();
       const assistantText = data.text || "No response.";
+      const assistantMsg = { role: "assistant", content: assistantText };
 
-      const isOpponentSpeech = [1, 3, 5].includes(speechNumber);
-      const isJudge = speechNumber === 6;
-
-      const assistantMsg = {
-        role: "assistant",
-        content: assistantText,
-        isOpponentSpeech: isOpponentSpeech && !isJudge,
-        isJudgeFeedback: isJudge,
-      };
-
-      // Advance speech counter
-      if (speechNumber === 6) {
-        setRoundOver(true);
-        setSpeechNumber(7);
-      } else {
-        setSpeechNumber((prev) => prev + 1);
+      if (isPracticeRefutation) {
+        setPracticeStage("feedback_given");
+        assistantMsg.isFeedbackResponse = true;
+      } else if (practiceMode && practiceStage === "idle") {
+        setPracticeStage("awaiting_user_refutation");
+        assistantMsg.isOpponentArg = true;
       }
 
       setMessages([...newMessages, assistantMsg]);
@@ -210,85 +183,39 @@ export default function App() {
     setLoading(false);
   };
 
-  const startPracticeWithResolution = (res, chosenSide) => {
+  const startPracticeWithResolution = (res) => {
     setResolution(res);
     setResolutionSet(true);
     setPracticeMode(true);
-    setRoundOver(false);
+    setPracticeStage("idle");
     setAppMode("practice");
     setMessages([]);
-    setSide(chosenSide);
-    setSpeechNumber(1);
-
-    const botSide = chosenSide === "gov" ? "Opposition" : "Government";
-    const prompt = `The resolution is: "${res}". You are debating as the ${botSide} side. The user is debating as the ${chosenSide === "gov" ? "Government" : "Opposition"} side.
-
-Please deliver SPEECH 1 — your full opening constructive case. Label it clearly as "SPEECH 1 — ${botSide.toUpperCase()} CONSTRUCTIVE". Give 2-3 strong contentions with definitions and intro. Make it genuinely challenging.
-
-After your speech, clearly tell the user: "This is your SPEECH 2 — refute my contentions AND build your own case for the ${chosenSide === "gov" ? "Government" : "Opposition"} side."`;
-
-    const firstMsg = { role: "user", content: prompt };
-    const msgs = [firstMsg];
-    setMessages([]);
-    setLoading(true);
-
-    fetch("/api/gemini", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: `RESOLUTION: "${res}"\nUSER SIDE: ${chosenSide === "gov" ? "Government" : "Opposition"}\nBOT SIDE: ${botSide}\nSPEECH MODE: Full Round Practice\nCURRENT SPEECH NUMBER: 1\n\n${prompt}` }],
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        const assistantText = data.text || "No response.";
-        setMessages([{ role: "assistant", content: assistantText, isOpponentSpeech: true }]);
-        setSpeechNumber(2);
-        setLoading(false);
-      })
-      .catch(() => {
-        setMessages([{ role: "assistant", content: "Error starting the round. Please try again." }]);
-        setLoading(false);
-      });
+    setSide(side || "gov");
+    sendMessage(`You are now in practice debate mode. The resolution is: "${res}". Present ONE strong argument that the Opposition side would make against this resolution. Argue it persuasively and make it genuinely challenging — include their Claim, Warrant, and Impact clearly. Do NOT provide any refutation or hint at how to beat it. Stop after presenting the argument and wait for the user's response.`);
   };
 
-  const handleUserSpeech = () => {
-    if (!input.trim() || loading) return;
-
-    let prompt = input;
-
-    if (speechNumber === 2) {
-      prompt = `SPEECH 2 — USER RESPONSE:\n\n${input}\n\n[Now deliver SPEECH 3 — your rebuttal. Attack what I said, extend your own contentions, point out anything I dropped. Label it "SPEECH 3 — ${side === "gov" ? "OPPOSITION" : "GOVERNMENT"} REBUTTAL". After, tell me: "This is your SPEECH 4 — continue the clash, reinforce your strongest points."]`;
-    } else if (speechNumber === 4) {
-      prompt = `SPEECH 4 — USER CLASH:\n\n${input}\n\n[Now deliver SPEECH 5 — your whip. Weigh the round, explain key voters, summarize why your side wins. NO new arguments. Label it "SPEECH 5 — ${side === "gov" ? "OPPOSITION" : "GOVERNMENT"} WHIP". After, tell me: "This is your SPEECH 6 — your final whip speech. Weigh the round and tell me why YOU win."]`;
-    } else if (speechNumber === 6) {
-      prompt = `SPEECH 6 — USER WHIP:\n\n${input}\n\n[The round is over. Now give a detailed judge's critique. Who won and why? What did the user do well? What did they drop? What should they improve? Be honest and specific.]`;
-    }
-
-    sendMessage(prompt);
-  };
-
-  const handleGenerateResolution = (chosenSide) => {
+  const handleGenerateResolution = () => {
     setPracticeResMode("generating");
+    const prompt = `Generate one strong, interesting high school parliamentary debate resolution. Return ONLY the resolution text, nothing else. No explanation, no quotes, just the resolution itself.`;
     fetch("/api/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system: "You generate debate resolutions. Return only the resolution text, nothing else. No quotes, no explanation.",
-        messages: [{ role: "user", content: "Generate one strong, interesting high school parliamentary debate resolution." }],
+        system: "You generate debate resolutions. Return only the resolution text, nothing else.",
+        messages: [{ role: "user", content: prompt }],
       }),
     })
       .then((r) => r.json())
       .then((data) => {
         const res = data.text?.trim() || "This house would ban social media for minors.";
-        startPracticeWithResolution(res, chosenSide);
+        startPracticeWithResolution(res);
       })
-      .catch(() => startPracticeWithResolution("This house would ban social media for minors.", chosenSide));
+      .catch(() => startPracticeWithResolution("This house would ban social media for minors."));
   };
 
   const handleQuickAction = (action) => {
     if (!resolutionSet || !side) return;
+    setPracticeMode(false);
     const prompts = {
       case: `Generate a full ${side === "gov" ? "Prime Minister (Government)" : "Leader of Opposition"} constructive case for this resolution. Complete 8-minute case with definitions, intro, and all contentions fully fleshed out. Include a creative third contention if possible.`,
       whip: `Generate a ${side === "gov" ? "Government" : "Opposition"} Whip speech (5 minutes). Third speech — focus on weighing, voters, comparing the two worlds, summarizing why we win. No new arguments.`,
@@ -296,6 +223,17 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
       counterplan: `Write a counterplan for the ${side === "gov" ? "Government" : "Opposition"} side. Include: Plantext, Net Benefit, Actor, Timeframe, and Cost/Mechanism.`,
     };
     sendMessage(prompts[action]);
+  };
+
+  const handleSubmitRefutation = () => {
+    if (!input.trim()) return;
+    sendMessage(`Here is my attempted refutation of your argument:\n\n"${input}"\n\nPlease give me honest, detailed feedback. Tell me what I did well, what was weak, what I missed or dropped entirely. Then show me what an ideal refutation looks like — bullet summary first, then verbatim speech text.`, false, true);
+    setPracticeStage("feedback_given");
+  };
+
+  const handleNextPracticeArg = () => {
+    setPracticeStage("idle");
+    sendMessage(`Good. Now give me another argument the ${side === "gov" ? "Opposition" : "Government"} side would make — a different argument from the ones already covered. Same rules: present it persuasively as the opponent, no hints, wait for my refutation.`);
   };
 
   const resetToLanding = () => {
@@ -307,9 +245,7 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
     setSide(null);
     setMessages([]);
     setPracticeMode(false);
-    setSpeechNumber(0);
-    setRoundOver(false);
-    setInput("");
+    setPracticeStage("idle");
   };
 
   const formatMessage = (text) => {
@@ -328,7 +264,7 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
       if (/^- /.test(line)) {
         return <div key={i} style={{ paddingLeft:16, marginBottom:2, color:"#475569" }}>•&nbsp;{line.slice(2)}</div>;
       }
-      if (/^(Contention|Layer|Sub-argument|Voter|CONTENTION|LAYER|VOTER|SPEECH)\s/i.test(line)) {
+      if (/^(Contention|Layer|Sub-argument|Voter|CONTENTION|LAYER|VOTER)\s/i.test(line)) {
         return <div key={i} style={{ fontWeight:700, color:"#4f46e5", marginTop:14, marginBottom:4, fontSize:13, textTransform:"uppercase", letterSpacing:"0.04em" }}>{line}</div>;
       }
       if (/^(CLAIM|WARRANT|IMPACT|Claim:|Warrant:|Impact:)/i.test(line)) {
@@ -339,17 +275,10 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
     });
   };
 
-  const getCurrentSpeechLabel = () => {
-    if (speechNumber === 2) return "YOUR SPEECH 2 — Refute & Build Your Case";
-    if (speechNumber === 4) return "YOUR SPEECH 4 — Continue the Clash";
-    if (speechNumber === 6) return "YOUR SPEECH 6 — Final Whip";
-    return null;
-  };
-
-  const isUserTurn = practiceMode && [2, 4, 6].includes(speechNumber) && !loading;
+  const isAwaitingRefutation = practiceMode && practiceStage === "awaiting_user_refutation";
   const canChat = resolutionSet && side && !loading;
 
-  // ── LANDING ──
+  // ── LANDING SCREEN ──
   if (appMode === "landing") {
     return (
       <div style={s.app}>
@@ -366,7 +295,7 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
           <div style={s.landingCard}>
             <div style={s.landingIcon}>⚖️</div>
             <p style={s.landingTitle}>Ready to debate.</p>
-            <p style={s.landingSubtitle}>Generate a full case or simulate a complete debate round against the AI.</p>
+            <p style={s.landingSubtitle}>Generate a full case or jump straight into practice mode — no setup required.</p>
             <div style={s.landingGrid}>
               <button style={s.landingBtnCase} onClick={() => setAppMode("case")}>
                 <span style={s.landingBtnIcon}>📋</span>
@@ -375,8 +304,8 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
               </button>
               <button style={s.landingBtnPractice} onClick={() => setAppMode("practice_setup")}>
                 <span style={s.landingBtnIcon}>⚔️</span>
-                Full Round Practice
-                <span style={s.landingBtnSub}>Simulate a complete round</span>
+                Practice Mode
+                <span style={s.landingBtnSub}>Drill refutations</span>
               </button>
             </div>
           </div>
@@ -385,7 +314,7 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
     );
   }
 
-  // ── PRACTICE SETUP ──
+  // ── PRACTICE SETUP SCREEN ──
   if (appMode === "practice_setup") {
     return (
       <div style={s.app}>
@@ -402,39 +331,27 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
         <div style={s.practiceLanding}>
           <div style={s.practiceLandingCard}>
             <div style={{ fontSize:36, marginBottom:12 }}>⚔️</div>
-            <p style={s.practiceLandingTitle}>Full Round Practice</p>
-            <p style={s.practiceLandingSubtitle}>6 speeches. The AI debates you for real — you refute, extend, and weigh just like a real round.</p>
+            <p style={s.practiceLandingTitle}>Practice Mode</p>
+            <p style={s.practiceLandingSubtitle}>Do you have a resolution in mind, or should I generate one?</p>
 
-            {/* Side selection always shown */}
-            <div style={{ marginBottom:20 }}>
-              <p style={{ fontSize:11, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:8 }}>Pick Your Side</p>
-              <div style={s.sideGrid}>
-                <button style={side === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={() => setSide("gov")}>GOV</button>
-                <button style={side === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={() => setSide("opp")}>OPP</button>
+            {practiceResMode === null && (
+              <div style={s.practiceResGrid}>
+                <button style={s.practiceResBtn} onClick={handleGenerateResolution}>
+                  <span style={{ fontSize:24 }}>🎲</span>
+                  Generate one for me
+                </button>
+                <button style={s.practiceResBtnAlt} onClick={() => setPracticeResMode("custom")}>
+                  <span style={{ fontSize:24 }}>✏️</span>
+                  I have my own
+                </button>
               </div>
-            </div>
-
-            {side && practiceResMode === null && (
-              <>
-                <p style={{ fontSize:11, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:12 }}>Resolution</p>
-                <div style={s.practiceResGrid}>
-                  <button style={s.practiceResBtn} onClick={() => handleGenerateResolution(side)}>
-                    <span style={{ fontSize:24 }}>🎲</span>
-                    Generate one
-                  </button>
-                  <button style={s.practiceResBtnAlt} onClick={() => setPracticeResMode("custom")}>
-                    <span style={{ fontSize:24 }}>✏️</span>
-                    I have my own
-                  </button>
-                </div>
-              </>
             )}
 
             {practiceResMode === "generating" && (
-              <div style={{ color:"#94a3b8", fontSize:13, padding:"20px 0" }}>Setting up your round...</div>
+              <div style={{ color:"#94a3b8", fontSize:13, padding:"20px 0" }}>Generating a resolution...</div>
             )}
 
-            {practiceResMode === "custom" && side && (
+            {practiceResMode === "custom" && (
               <>
                 <input
                   autoFocus
@@ -444,16 +361,16 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
                   onChange={(e) => setPracticeCustomRes(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && practiceCustomRes.trim()) {
-                      startPracticeWithResolution(practiceCustomRes.trim(), side);
+                      startPracticeWithResolution(practiceCustomRes.trim());
                     }
                   }}
                 />
                 <button
                   style={{ ...s.practiceResSubmit, opacity: practiceCustomRes.trim() ? 1 : 0.5 }}
                   disabled={!practiceCustomRes.trim()}
-                  onClick={() => startPracticeWithResolution(practiceCustomRes.trim(), side)}
+                  onClick={() => startPracticeWithResolution(practiceCustomRes.trim())}
                 >
-                  Start Round →
+                  Start Practice →
                 </button>
               </>
             )}
@@ -465,33 +382,44 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
     );
   }
 
-  // ── CASE GENERATOR ──
-  if (appMode === "case") {
-    return (
-      <div style={s.app}>
-        <header style={s.header}>
-          <div style={s.headerLeft}>
-            <div style={s.logo}>⚖</div>
-            <div>
-              <p style={s.headerTitle}>Parli Coach</p>
-              <p style={s.headerSub}>HS Parliamentary Debate</p>
-            </div>
+  // ── CASE GENERATOR + PRACTICE CHAT ──
+  return (
+    <div style={s.app}>
+      <header style={s.header}>
+        <div style={s.headerLeft}>
+          <div style={s.logo}>⚖</div>
+          <div>
+            <p style={s.headerTitle}>Parli Coach</p>
+            <p style={s.headerSub}>HS Parliamentary Debate</p>
           </div>
-          <div style={s.headerBadges}>
-            {resolutionSet && side && <span style={side === "gov" ? s.badgeGov : s.badgeOpp}>{side === "gov" ? "▲ GOV" : "▼ OPP"}</span>}
-            <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
-          </div>
-        </header>
-        <div style={s.body}>
+        </div>
+        <div style={s.headerBadges}>
+          {resolutionSet && side && <span style={side === "gov" ? s.badgeGov : s.badgeOpp}>{side === "gov" ? "▲ GOV" : "▼ OPP"}</span>}
+          {practiceMode && <span style={s.badgePractice}>⚔ PRACTICE</span>}
+          <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
+        </div>
+      </header>
+
+      <div style={s.body}>
+        {/* Sidebar — only show for case mode */}
+        {!practiceMode && (
           <aside style={s.sidebar}>
             <div>
               <p style={s.sideLabel}>Resolution</p>
-              <textarea style={s.textarea} rows={3} placeholder="Enter the resolution..." value={resolution} onChange={(e) => setResolution(e.target.value)} disabled={resolutionSet} />
+              <textarea
+                style={s.textarea}
+                rows={3}
+                placeholder="Enter the resolution..."
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+                disabled={resolutionSet}
+              />
               {!resolutionSet
                 ? <button style={s.btnPrimary} onClick={() => { if (resolution.trim()) { setResolutionSet(true); setMessages([]); } }} disabled={!resolution.trim()}>Set Resolution</button>
                 : <button style={s.btnSecondary} onClick={() => { setResolutionSet(false); setSide(null); setMessages([]); }}>Change</button>
               }
             </div>
+
             {resolutionSet && (
               <div>
                 <p style={s.sideLabel}>Side</p>
@@ -501,6 +429,7 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
                 </div>
               </div>
             )}
+
             {resolutionSet && side && (
               <div>
                 <p style={s.sideLabel}>Speech</p>
@@ -511,6 +440,7 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
                 </select>
               </div>
             )}
+
             {resolutionSet && side && (
               <div>
                 <p style={s.sideLabel}>Generate</p>
@@ -520,10 +450,13 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
                   { key:"plan", icon:"📄", label:"Write a Plan" },
                   { key:"counterplan", icon:"↩️", label:"Counterplan" },
                 ].map(({ key, icon, label }) => (
-                  <button key={key} style={s.actionBtn} onClick={() => handleQuickAction(key)} disabled={loading}>{icon} {label}</button>
+                  <button key={key} style={s.actionBtn} onClick={() => handleQuickAction(key)} disabled={loading}>
+                    {icon} {label}
+                  </button>
                 ))}
               </div>
             )}
+
             {messages.length > 0 && (
               <div>
                 <p style={s.sideLabel}>Export</p>
@@ -538,186 +471,159 @@ After your speech, clearly tell the user: "This is your SPEECH 2 — refute my c
               </div>
             )}
           </aside>
+        )}
 
-          <main style={s.chat}>
-            <div style={s.messages}>
-              {messages.length === 0 && (
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", textAlign:"center", gap:8 }}>
-                  <div style={{ fontSize:48 }}>⚖️</div>
-                  <p style={{ fontSize:22, fontWeight:700, margin:0 }}>Ready to debate.</p>
-                  <p style={{ fontSize:13, color:"#94a3b8", maxWidth:280, lineHeight:1.6, margin:0 }}>Set a resolution, pick your side, then generate a case.</p>
-                  {!resolutionSet && <p style={{ fontSize:13, color:"#4f46e5", fontWeight:600, margin:0 }}>← Start with a resolution</p>}
-                  {resolutionSet && !side && <p style={{ fontSize:13, color:"#4f46e5", fontWeight:600, margin:0 }}>← Pick Government or Opposition</p>}
-                </div>
-              )}
-              {messages.map((msg, i) => (
-                <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
-                  <div style={msg.role === "user" ? s.msgUser : s.msgAsst}>
-                    {msg.isFeedback && <div style={{ ...s.msgTag, color:"rgba(255,255,255,0.7)" }}>✏ Revision Request</div>}
-                    {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
-                    {msg.role === "assistant" && i === messages.length - 1 && !loading && (
-                      <div style={s.msgActions}>
-                        <button style={s.smallBtn} onClick={() => setFeedbackMode(i)}>✏ Request Revision</button>
-                        <button style={s.smallBtn} onClick={() => navigator.clipboard.writeText(msg.content)}>📋 Copy</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div style={s.msgWrapAsst}>
-                  <div style={s.msgAsst}>
-                    <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Generating</span>
-                    <span style={s.loadingDot} /><span style={s.loadingDot} /><span style={s.loadingDot} />
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+        {/* Practice sidebar */}
+        {practiceMode && (
+          <aside style={s.sidebar}>
+            <div>
+              <p style={s.sideLabel}>Resolution</p>
+              <div style={{ fontSize:12, color:"#475569", lineHeight:1.5, padding:"8px 10px", background:"#f8fafc", borderRadius:8, border:"1px solid #e2e8f0" }}>{resolution}</div>
             </div>
+            <div>
+              <p style={s.sideLabel}>Side</p>
+              <div style={s.sideGrid}>
+                <button style={side === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={() => setSide("gov")}>GOV</button>
+                <button style={side === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={() => setSide("opp")}>OPP</button>
+              </div>
+            </div>
+            <div>
+              <p style={s.sideLabel}>Actions</p>
+              <button style={s.actionBtnPracticeActive} onClick={handleNextPracticeArg} disabled={loading}>⚔️ Next Argument</button>
+              <button style={s.actionBtn} onClick={resetToLanding}>← Back to Home</button>
+            </div>
+          </aside>
+        )}
 
-            {feedbackMode !== null && (
-              <div style={s.revBar}>
-                <div style={s.revLabel}>✏ Revision Request</div>
-                <div style={s.revRow}>
-                  <textarea autoFocus style={{ ...s.textarea, flex:1, marginBottom:0 }} rows={2} placeholder="What should change?" value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (feedbackText.trim()) sendMessage(`REVISION REQUEST: ${feedbackText}`, true); }}} />
-                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                    <button style={s.revBtnSend} onClick={() => { if (feedbackText.trim()) sendMessage(`REVISION REQUEST: ${feedbackText}`, true); }} disabled={!feedbackText.trim()}>Send</button>
-                    <button style={s.revBtnCancel} onClick={() => { setFeedbackMode(null); setFeedbackText(""); }}>Cancel</button>
-                  </div>
-                </div>
+        {/* Chat */}
+        <main style={s.chat}>
+          <div style={s.messages}>
+            {messages.length === 0 && !practiceMode && (
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", textAlign:"center", gap:8 }}>
+                <div style={{ fontSize:48 }}>⚖️</div>
+                <p style={{ fontSize:22, fontWeight:700, margin:0 }}>Ready to debate.</p>
+                <p style={{ fontSize:13, color:"#94a3b8", maxWidth:280, lineHeight:1.6, margin:0 }}>Set a resolution on the left, pick your side, then generate a case.</p>
+                {!resolutionSet && <p style={{ fontSize:13, color:"#4f46e5", fontWeight:600, margin:0 }}>← Start with a resolution</p>}
+                {resolutionSet && !side && <p style={{ fontSize:13, color:"#4f46e5", fontWeight:600, margin:0 }}>← Pick Government or Opposition</p>}
               </div>
             )}
 
-            <div style={s.inputBar}>
-              <div style={s.inputRow}>
-                <textarea style={s.inputTextarea} rows={2}
-                  placeholder={!resolutionSet ? "Set a resolution to begin..." : !side ? "Pick a side first..." : "Ask anything..."}
-                  value={input} onChange={(e) => setInput(e.target.value)} disabled={!canChat}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim() && canChat) sendMessage(input); }}} />
-                <button style={!input.trim() || !canChat ? s.sendBtnDisabled : s.sendBtn}
-                  onClick={() => { if (input.trim() && canChat) sendMessage(input); }} disabled={!input.trim() || !canChat}>Send</button>
-              </div>
-              <div style={s.inputHint}>Enter to send · Shift+Enter for new line</div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  // ── FULL ROUND PRACTICE ──
-  return (
-    <div style={s.app}>
-      <header style={s.header}>
-        <div style={s.headerLeft}>
-          <div style={s.logo}>⚖</div>
-          <div>
-            <p style={s.headerTitle}>Parli Coach</p>
-            <p style={s.headerSub}>HS Parliamentary Debate</p>
-          </div>
-        </div>
-        <div style={s.headerBadges}>
-          <span style={side === "gov" ? s.badgeGov : s.badgeOpp}>{side === "gov" ? "▲ GOV" : "▼ OPP"}</span>
-          <span style={s.badgePractice}>⚔ FULL ROUND</span>
-          <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
-        </div>
-      </header>
-
-      <div style={s.body}>
-        <aside style={s.sidebar}>
-          <div>
-            <p style={s.sideLabel}>Resolution</p>
-            <div style={{ fontSize:12, color:"#475569", lineHeight:1.5, padding:"8px 10px", background:"#f8fafc", borderRadius:8, border:"1px solid #e2e8f0" }}>{resolution}</div>
-          </div>
-          <div>
-            <p style={s.sideLabel}>Round Progress</p>
-            <div style={s.speechTracker}>
-              {SPEECH_LABELS.map((label, idx) => {
-                const num = idx + 1;
-                let style = s.speechBubblePending;
-                if (speechNumber > num) style = s.speechBubbleDone;
-                else if (speechNumber === num) style = s.speechBubbleCurrent;
-                return <span key={idx} style={style}>{label}</span>;
-              })}
-            </div>
-          </div>
-          {roundOver && (
-            <div>
-              <p style={s.sideLabel}>Round Over</p>
-              <button style={{ ...s.actionBtn, background:"#4f46e5", color:"#fff", border:"none", fontWeight:700 }} onClick={resetToLanding}>Start New Round</button>
-            </div>
-          )}
-          <div>
-            <button style={s.actionBtn} onClick={resetToLanding}>← Back to Home</button>
-          </div>
-        </aside>
-
-        <main style={s.chat}>
-          <div style={s.messages}>
             {messages.map((msg, i) => (
               <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
                 <div style={
                   msg.role === "user" ? s.msgUser
-                  : msg.isJudgeFeedback ? s.msgAsstJudge
-                  : msg.isOpponentSpeech ? s.msgAsstOpponent
+                  : msg.isOpponentArg ? s.msgAsstPractice
+                  : msg.isFeedbackResponse ? s.msgAsstFeedback
                   : s.msgAsst
                 }>
-                  {msg.isOpponentSpeech && <div style={{ ...s.msgTag, color:"#be123c" }}>⚔ Opponent</div>}
-                  {msg.isJudgeFeedback && <div style={{ ...s.msgTag, color:"#15803d" }}>🏛 Judge's Critique</div>}
-                  {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
+                  {msg.isOpponentArg && <div style={{ ...s.msgTag, color:"#be123c" }}>⚔ Opponent's Argument</div>}
+                  {msg.isFeedbackResponse && <div style={{ ...s.msgTag, color:"#15803d" }}>✓ Refutation Feedback</div>}
+                  {msg.isPracticeRefutation && <div style={{ ...s.msgTag, color:"rgba(255,255,255,0.7)" }}>Your Refutation</div>}
+                  {msg.isFeedback && <div style={{ ...s.msgTag, color:"rgba(255,255,255,0.7)" }}>✏ Revision Request</div>}
+
+                  {msg.role === "assistant"
+                    ? <div>{formatMessage(msg.content)}</div>
+                    : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>
+                  }
+
+                  {msg.role === "assistant" && i === messages.length - 1 && !loading && (
+                    <div style={msg.isOpponentArg ? s.msgActionsRose : msg.isFeedbackResponse ? s.msgActionsGreen : s.msgActions}>
+                      {msg.isOpponentArg && practiceStage === "awaiting_user_refutation" && (
+                        <span style={s.practiceHint}>Type your refutation in the box below ↓</span>
+                      )}
+                      {msg.isFeedbackResponse && (
+                        <>
+                          <button style={s.smallBtnRed} onClick={handleNextPracticeArg}>⚔ Next Argument</button>
+                          <button style={s.smallBtnGray} onClick={resetToLanding}>Exit Practice</button>
+                        </>
+                      )}
+                      {!msg.isOpponentArg && !msg.isFeedbackResponse && (
+                        <>
+                          <button style={s.smallBtn} onClick={() => setFeedbackMode(i)}>✏ Request Revision</button>
+                          <button style={s.smallBtn} onClick={() => navigator.clipboard.writeText(msg.content)}>📋 Copy</button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+
             {loading && (
               <div style={s.msgWrapAsst}>
-                <div style={s.msgAsstOpponent}>
-                  <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Opponent is speaking</span>
-                  <span style={s.loadingDot} /><span style={s.loadingDot} /><span style={s.loadingDot} />
+                <div style={s.msgAsst}>
+                  <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Generating</span>
+                  <span style={s.loadingDot} />
+                  <span style={s.loadingDot} />
+                  <span style={s.loadingDot} />
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
+          {feedbackMode !== null && (
+            <div style={s.revBar}>
+              <div style={s.revLabel}>✏ Revision Request</div>
+              <div style={s.revRow}>
+                <textarea
+                  autoFocus
+                  style={{ ...s.textarea, flex:1, marginBottom:0 }}
+                  rows={2}
+                  placeholder="What should change?"
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (feedbackText.trim()) sendMessage(`REVISION REQUEST: ${feedbackText}`, true);
+                    }
+                  }}
+                />
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  <button style={s.revBtnSend} onClick={() => { if (feedbackText.trim()) sendMessage(`REVISION REQUEST: ${feedbackText}`, true); }} disabled={!feedbackText.trim()}>Send</button>
+                  <button style={s.revBtnCancel} onClick={() => { setFeedbackMode(null); setFeedbackText(""); }}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={s.inputBar}>
-            {isUserTurn && getCurrentSpeechLabel() && (
-              <div style={s.speechLabel}>🎤 {getCurrentSpeechLabel()}</div>
-            )}
-            {!isUserTurn && !loading && !roundOver && speechNumber > 0 && (
-              <div style={{ fontSize:11, color:"#94a3b8", marginBottom:6, fontFamily:"monospace" }}>Waiting for opponent...</div>
-            )}
-            {roundOver && (
-              <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>✓ Round complete — see judge's critique above</div>
-            )}
+            {isAwaitingRefutation && <div style={s.practiceHintBar}>⚔ PRACTICE — Type your refutation below, then hit Submit</div>}
+            {!resolutionSet && !practiceMode && <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>Set a resolution to begin.</div>}
             <div style={s.inputRow}>
               <textarea
                 style={s.inputTextarea}
-                rows={3}
+                rows={2}
                 placeholder={
-                  roundOver ? "Round is over. Start a new round from the sidebar."
-                  : !isUserTurn ? "Wait for the opponent to finish..."
-                  : "Deliver your speech here..."
+                  isAwaitingRefutation ? "Type your refutation here..."
+                  : !resolutionSet && !practiceMode ? "Set a resolution to begin..."
+                  : !side ? "Pick a side first..."
+                  : "Ask anything — refutations, arguments, plans..."
                 }
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={!isUserTurn || roundOver}
+                disabled={!canChat}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (input.trim() && isUserTurn) handleUserSpeech();
+                    if (!input.trim()) return;
+                    isAwaitingRefutation ? handleSubmitRefutation() : sendMessage(input);
                   }
                 }}
               />
               <button
-                style={!input.trim() || !isUserTurn || roundOver ? s.sendBtnDisabled : s.sendBtn}
-                onClick={handleUserSpeech}
-                disabled={!input.trim() || !isUserTurn || roundOver}
+                style={!input.trim() || !canChat ? s.sendBtnDisabled : isAwaitingRefutation ? s.sendBtnRed : s.sendBtn}
+                onClick={() => {
+                  if (!input.trim() || !canChat) return;
+                  isAwaitingRefutation ? handleSubmitRefutation() : sendMessage(input);
+                }}
+                disabled={!input.trim() || !canChat}
               >
-                Deliver
+                {isAwaitingRefutation ? "Submit" : "Send"}
               </button>
             </div>
-            <div style={s.inputHint}>Enter to deliver · Shift+Enter for new line</div>
+            <div style={s.inputHint}>Enter to send · Shift+Enter for new line</div>
           </div>
         </main>
       </div>
