@@ -167,7 +167,10 @@ const callGemini = async (prompt) => {
       messages: [{ role: "user", content: prompt }],
     }),
   });
-  if (!res.ok) throw new Error("API error");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || "API error");
+  }
   const data = await res.json();
   if (!data.text) throw new Error("No text in response");
   return data.text;
@@ -224,12 +227,22 @@ export default function App() {
   const generateResolution = async () => {
     setSetupLoading(true);
     setSetupResMode("generating");
+    const topics = ["technology","education","environment","healthcare","criminal justice","foreign policy","economics","social media","artificial intelligence","democracy","free speech","housing","immigration","energy","sports"];
+    const topic = topics[Math.floor(Math.random() * topics.length)];
+    const seed = Math.floor(Math.random() * 99999);
     try {
-      const text = await callGemini("Generate one strong, interesting high school parliamentary debate resolution. Examples of format: 'This house would ban social media for minors.' or 'This house believes that the benefits of AI outweigh the harms.' Return ONLY the resolution text. Nothing else. No quotes, no explanation, no punctuation other than the resolution itself.");
-      setSetupResText(text.trim().replace(/^["']|["']$/g, ""));
+      const text = await callGemini(`Generate one unique, specific high school parliamentary debate resolution about ${topic}. Seed: ${seed}. Format examples: 'This house would ban social media for minors.' or 'This house believes that democracies should impose term limits on all elected officials.' Return ONLY the resolution text. No quotes, no explanation, nothing else.`);
+      setSetupResText(text.trim().replace(/^["']|["']$/g, "").replace(/\.$/, ""));
       setSetupResMode("done");
     } catch {
-      setSetupResText("This house would ban social media for minors.");
+      const fallbacks = [
+        "This house would ban social media for minors",
+        "This house believes that universal basic income should be implemented",
+        "This house would make voting mandatory",
+        "This house believes that AI development should be internationally regulated",
+        "This house would abolish the death penalty",
+      ];
+      setSetupResText(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
       setSetupResMode("done");
     }
     setSetupLoading(false);
@@ -240,29 +253,29 @@ export default function App() {
     const uSide = setupSide === "gov" ? "Government" : "Opposition";
     const bSide = setupSide === "gov" ? "Opposition" : "Government";
 
+    // Set all state first, then switch mode
     setResolution(res);
     setUserSide(uSide);
     setBotSide(bSide);
     setMessages([]);
     setRoundOver(false);
     setInput("");
-    setAppMode("practice");
 
     if (setupSide === "opp") {
-      // Bot (GOV) opens first
       setStage(1);
       setLoading(true);
+      setAppMode("practice");
       try {
         const text = await callGemini(ROUND_PROMPTS.gov_opens(res));
         setMessages([{ role:"assistant", content:text, type:"opponent" }]);
         setStage(2);
-      } catch {
-        setMessages([{ role:"assistant", content:"Error starting the round — please go back and try again.", type:"opponent" }]);
+      } catch (e) {
+        setMessages([{ role:"assistant", content:`Error: ${e.message} — please go back and try again.`, type:"opponent" }]);
       }
       setLoading(false);
     } else {
-      // User (GOV) opens first
       setStage(0);
+      setAppMode("practice");
     }
   };
 
