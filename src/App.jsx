@@ -1,89 +1,105 @@
 import { useState, useRef, useEffect } from "react";
 
-const SYSTEM_PROMPT = `You are an expert high school parliamentary debate coach and case writer. You specialize in the 6-speech parliamentary format.
+const SYSTEM_PROMPT = `You are an expert high school parliamentary debate coach simulating an opponent in a full practice round.
 
-CRITICAL FORMATTING RULES — NEVER VIOLATE THESE:
-1. NEVER use "this isn't X, it's Y" syntax or any equivalent phrasing.
-2. Do NOT use lookup-required stats or studies in refutations — argue from logic, structural reasoning, and first principles only.
-3. For EVERY contention and refutation, provide FIRST a bullet-point summary, THEN the verbatim speech text below it.
-4. Signpost everything: "Layer 1", "Sub-argument 1", "Contention 1", "Voter 1", etc.
-5. Every argument needs clear CLAIM → WARRANT → IMPACT structure, labeled.
-6. DO NOT sound like an AI. Use human-sounding rhetoric, varied sentence structures, real pathos where appropriate.
-7. NEVER be rhythmically uniform. Vary syntax constantly.
-8. DO NOT over-explain obvious points.
-9. Definitions go at the top of every opening case.
-10. NEVER use bullet points for anything except the summary section before verbatim text.
-11. 8-minute constructive cases should be full and substantive with 2-3 contentions.
-12. Whip speeches focus on WEIGHING, VOTERS, COMPARING — no new arguments.`;
+FLOW FORMAT RULES — ALL OPPONENT SPEECHES MUST FOLLOW THESE:
+You are outputting a DEBATE FLOW, not a written speech. Format everything as a debater would flow it on paper.
+- Use short, punchy bullet points — 5-12 words max per bullet
+- Each contention gets a label: "C1:", "C2:", "C3:"
+- Each argument gets sub-bullets indented under it
+- Label each argument layer: "Claim:", "Warrant:", "Impact:"
+- For rebuttals label each response: "→ [their arg]: [your response in 1 line]"
+- NO full sentences, NO paragraphs, NO transitions, NO filler
+- Think of it as what a debater would write on their flow sheet
+
+EXAMPLE FORMAT for a constructive:
+— GOVERNMENT CONSTRUCTIVE —
+Definitions: [resolution] = [brief def]
+
+C1: [Short contention title]
+  Claim: [one line]
+  Warrant: [one line]
+  Impact: [one line]
+  Sub: [additional layer if needed]
+
+C2: [Short contention title]
+  Claim: [one line]
+  Warrant: [one line]
+  Impact: [one line]
+
+EXAMPLE FORMAT for a rebuttal:
+— OPPOSITION REBUTTAL —
+→ C1 [their title]: [attack in 1 line]
+  - [sub-response]
+  - [sub-response]
+→ C2 [their title]: [attack in 1 line]
+  - [sub-response]
+
+JUDGE'S CRITIQUE: The judge's critique is the ONLY section that uses full prose. Be honest, direct, specific.`;
 
 // Round flow:
 // GOV user: user opens → bot (OPP) rebuts+constructs → user rebuts → bot whip → user whip → judge
 // OPP user: bot (GOV) opens → user rebuts+constructs → bot rebuts+extends → user rebuts → bot whip → user whip → judge
 
 const ROUND_PROMPTS = {
-  gov_opens: (res) => `The resolution is: "${res}".
-You are debating as Government. Deliver a full opening constructive case.
-Label it: "— GOVERNMENT CONSTRUCTIVE CASE —"
-Include definitions, 2-3 fully developed contentions with Claim, Warrant, Impact.
-Make it genuinely challenging. At the end say: "Your turn — deliver the Opposition constructive case AND begin refuting my arguments."`,
+  gov_opens: (res) => `Resolution: "${res}"
+You are Government. Output your opening constructive case in FLOW FORMAT.
+Label it: "— GOVERNMENT CONSTRUCTIVE —"
+Include: brief definitions, C1, C2, and C3 if genuinely strong. Each contention: Claim, Warrant, Impact. Keep bullets short.
+End with one line: "Your turn — OPP constructive + rebut my case."`,
 
-  opp_rebuts_and_constructs: (res, userSpeech) => `The resolution is: "${res}".
-You are debating as Opposition. The Government just delivered their opening:
-
+  opp_rebuts_and_constructs: (res, userSpeech) => `Resolution: "${res}"
+You are Opposition. The Government just said:
 "${userSpeech}"
 
-Deliver two things:
-1. Label "— OPPOSITION REBUTTAL —" — attack their contentions one by one. Call out logical gaps and weak warrants.
-2. Label "— OPPOSITION CONSTRUCTIVE CASE —" — 2-3 of your own contentions for the Opposition side.
+Output in FLOW FORMAT:
+1. Label "— OPPOSITION REBUTTAL —" — go through each of their contentions with → responses
+2. Label "— OPPOSITION CONSTRUCTIVE —" — C1, C2, (C3 if strong). Each: Claim, Warrant, Impact.
+Keep all bullets short. No prose.
+End with one line: "Your turn — rebut my case and defend yours."`,
 
-At the end say: "Your turn — refute my case and defend yours."`,
-
-  gov_rebuts_and_extends: (res, userSpeech) => `The resolution is: "${res}".
-You are debating as Government. The Opposition just responded:
-
+  gov_rebuts_and_extends: (res, userSpeech) => `Resolution: "${res}"
+You are Government. The Opposition just said:
 "${userSpeech}"
 
-Deliver your rebuttal and extension:
-1. Label "— GOVERNMENT REBUTTAL —" — attack their Opposition contentions one by one. Call out any drops.
-2. Label "— GOVERNMENT EXTENSION —" — extend and reinforce your own Government contentions. Explain why they still stand despite their attacks.
+Output in FLOW FORMAT:
+1. Label "— GOVERNMENT REBUTTAL —" — → responses to each OPP contention, call out drops
+2. Label "— GOVERNMENT EXTENSION —" — re-extend your own contentions, show they still stand
+Keep all bullets short. No prose.
+End with one line: "Your turn — defend your case, attack my extensions. Then whip speeches."`,
 
-At the end say: "Your turn — defend your case and attack my extensions. Then we move to whip speeches."`,
-
-  opp_rebuts_gov_extended: (res, userSpeech) => `The resolution is: "${res}".
-You are debating as Opposition. The Government just delivered their rebuttal and extension:
-
+  opp_rebuts_gov_extended: (res, userSpeech) => `Resolution: "${res}"
+You are Opposition. Government just extended:
 "${userSpeech}"
 
-Deliver your rebuttal:
-1. Label "— OPPOSITION REBUTTAL —" — attack their extensions and reinforce your own Opposition contentions.
-2. Explain why the Opposition still wins the key clashes.
+Output in FLOW FORMAT:
+Label "— OPPOSITION REBUTTAL —" — → responses to their extensions, reinforce your own contentions
+Keep all bullets short. No prose.
+End with one line: "Your turn — rebut and defend. Then whip speeches."`,
 
-At the end say: "Your turn — rebut my arguments and defend your case. Then we go to whip speeches."`,
-
-  bot_whip: (res, botSide, userSpeech) => `The resolution is: "${res}".
-You are debating as ${botSide}. The user just delivered their rebuttal:
-
+  bot_whip: (res, botSide, userSpeech) => `Resolution: "${res}"
+You are ${botSide}. User just said:
 "${userSpeech}"
 
-Deliver your whip speech. NO new arguments.
-Label it: "— ${botSide.toUpperCase()} WHIP SPEECH —"
-1. Identify the 2-3 key voters in this round.
-2. Explain why YOU win on each voter.
-3. Weigh your world vs their world.
+Output in FLOW FORMAT:
+Label "— ${botSide.toUpperCase()} WHIP —"
+- List 2-3 voters as bullets
+- Under each voter: why YOU win it (1-2 bullets)
+- Final bullet: your world vs their world — why judge votes ${botSide}
+NO new arguments. Keep bullets short.
+End with one line: "Your turn — final whip speech."`,
 
-At the end say: "Your turn — deliver your final whip speech."`,
-
-  judge_critique: (res, userSide, botSide, userWhip) => `The resolution is: "${res}".
-The user debated as ${userSide}. The bot debated as ${botSide}. The user just delivered their final whip:
-
+  judge_critique: (res, userSide, botSide, userWhip) => `Resolution: "${res}"
+User was ${userSide}. Bot was ${botSide}. User's final whip:
 "${userWhip}"
 
-The round is over. Deliver a detailed judge's critique. Label it: "— JUDGE'S CRITIQUE —"
-1. Who won and why — be specific about decisive arguments.
+Round is over. Write a JUDGE'S CRITIQUE in full prose (this is the one section that is NOT flow format).
+Label it: "— JUDGE'S CRITIQUE —"
+1. Who won and why — name the decisive arguments specifically
 2. What did the user do well?
 3. What did the user drop or fail to answer?
 4. What should they improve?
-Be honest and direct. Don't sugarcoat.`,
+Be honest. Don't sugarcoat.`,
 };
 
 const s = {
