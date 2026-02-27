@@ -1,6 +1,72 @@
 import { useState, useRef, useEffect } from "react";
 
-const SYSTEM_PROMPT = `You are an expert high school parliamentary debate coach simulating an opponent in a full practice round.
+// ── DIFFICULTY CONFIGS ───────────────────────────────────────────────────────
+
+const DIFFICULTY = {
+  novice: {
+    label: "Novice",
+    color: "#16a34a",
+    bg: "#dcfce7",
+    border: "#bbf7d0",
+    description: "Simple args, forgiving",
+    botInstructions: `DIFFICULTY: NOVICE
+- Make simple, straightforward arguments. One clear warrant per contention.
+- Do NOT call out drops aggressively. Ignore minor gaps.
+- Use basic impacts. Do not stack layers.
+- Rebuttals should be short and simple, one response per contention.
+- Do not run multi-layered arguments.
+- Be a beginner-level opponent.`,
+  },
+  jv: {
+    label: "JV",
+    color: "#d97706",
+    bg: "#fef3c7",
+    border: "#fde68a",
+    description: "Moderate pressure",
+    botInstructions: `DIFFICULTY: JV
+- Make decent arguments with clear warrants and moderate impacts.
+- Occasionally call out drops, but don't harp on them.
+- Run 2 contentions max. Don't over-layer.
+- Rebuttals cover the main args but may miss secondary points.
+- Be a solid but beatable opponent.`,
+  },
+  varsity: {
+    label: "Varsity",
+    color: "#7c3aed",
+    bg: "#ede9fe",
+    border: "#ddd6fe",
+    description: "Strong & technical",
+    botInstructions: `DIFFICULTY: VARSITY
+- Make strong, well-developed arguments with layered warrants and real impacts.
+- Aggressively call out drops. Name them explicitly.
+- Run 2-3 contentions with sub-arguments.
+- Rebuttals go contention by contention and include extensions.
+- Whip speech weighs multiple voters and compares worlds.
+- Be a genuinely tough opponent.`,
+  },
+  toc: {
+    label: "TOC",
+    color: "#dc2626",
+    bg: "#fee2e2",
+    border: "#fecaca",
+    description: "Elite level, brutal",
+    botInstructions: `DIFFICULTY: TOC (Tournament of Champions)
+- Run the most technically sophisticated arguments possible.
+- Call out EVERY drop, even small ones. Name dropped arguments explicitly by label.
+- Multi-layer every contention: Claim, Warrant, Internal Link, Impact, Magnitude/Timeframe/Probability.
+- Rebuttals are exhaustive — respond to every sub-argument, not just main contentions.
+- Run counter-definitions if useful. Challenge framing aggressively.
+- Whip speech does full comparative weighing on every voter: magnitude, timeframe, probability.
+- Extensions are airtight and pre-empt the user's likely responses.
+- Be an elite, nearly unbeatable opponent.`,
+  },
+};
+
+const getSystemPrompt = (difficulty = "varsity") => {
+  const d = DIFFICULTY[difficulty];
+  return `You are an expert high school parliamentary debate coach simulating an opponent in a full practice round.
+
+${d.botInstructions}
 
 FLOW FORMAT RULES — ALL OPPONENT SPEECHES MUST FOLLOW THESE:
 You are outputting a DEBATE FLOW, not a written speech. Format everything as a debater would flow it on paper.
@@ -8,7 +74,7 @@ You are outputting a DEBATE FLOW, not a written speech. Format everything as a d
 - Each contention gets a label: "C1:", "C2:", "C3:"
 - Each argument gets sub-bullets indented under it
 - Label each argument layer: "Claim:", "Warrant:", "Impact:"
-- For rebuttals label each response: "→ [their arg]: [your response in 1 line]"
+- For rebuttals label each response: "[arrow] [their arg]: [your response in 1 line]"
 - NO full sentences, NO paragraphs, NO transitions, NO filler
 - Think of it as what a debater would write on their flow sheet
 
@@ -20,32 +86,34 @@ C1: [Short contention title]
   Claim: [one line]
   Warrant: [one line]
   Impact: [one line]
-  Sub: [additional layer if needed]
 
 C2: [Short contention title]
   Claim: [one line]
   Warrant: [one line]
-  Impact: [one line]
+  Impact: [one line]`;
+};
 
-EXAMPLE FORMAT for a rebuttal:
-— OPPOSITION REBUTTAL —
-→ C1 [their title]: [attack in 1 line]
-  - [sub-response]
-  - [sub-response]
-→ C2 [their title]: [attack in 1 line]
-  - [sub-response]
+const JUDGE_SYSTEM = `You are an impartial parliamentary debate judge. Your only job is to evaluate who won based on the arguments made.
 
-JUDGE'S CRITIQUE: The judge's critique is the ONLY section that uses full prose. Be honest, direct, specific.`;
+CRITICAL JUDGING RULES:
+- You are NOT rooting for the human user. You are NOT rooting for the AI opponent.
+- Judge purely on: argument quality, dropped arguments, weighing, and clash.
+- If the user lost, say so clearly and explain why. Do not soften it.
+- If the AI opponent lost, say so clearly.
+- A dropped argument is a conceded argument. Treat it that way.
+- Whoever did better comparative weighing in the whip wins close calls.
+- Be specific. Name the exact arguments that were decisive.
+- Write in full prose. Be direct, honest, and impartial.`;
 
 // Round flow:
-// GOV user: user opens → bot (OPP) rebuts+constructs → user rebuts → bot whip → user whip → judge
-// OPP user: bot (GOV) opens → user rebuts+constructs → bot rebuts+extends → user rebuts → bot whip → user whip → judge
+// GOV user: user opens -> bot (OPP) rebuts+constructs -> user rebuts -> bot whip -> user whip -> judge
+// OPP user: bot (GOV) opens -> user rebuts+constructs -> bot rebuts+extends -> user rebuts -> bot whip -> user whip -> judge
 
 const ROUND_PROMPTS = {
   gov_opens: (res) => `Resolution: "${res}"
 You are Government. Output your opening constructive case in FLOW FORMAT.
 Label it: "— GOVERNMENT CONSTRUCTIVE —"
-Include: brief definitions, C1, C2, and C3 if genuinely strong. Each contention: Claim, Warrant, Impact. Keep bullets short.
+Include: brief definitions, C1, C2, and C3 if strong. Each contention: Claim, Warrant, Impact. Keep bullets short.
 End with one line: "Your turn — OPP constructive + rebut my case."`,
 
   opp_rebuts_and_constructs: (res, userSpeech) => `Resolution: "${res}"
@@ -53,7 +121,7 @@ You are Opposition. The Government just said:
 "${userSpeech}"
 
 Output in FLOW FORMAT:
-1. Label "— OPPOSITION REBUTTAL —" — go through each of their contentions with → responses
+1. Label "— OPPOSITION REBUTTAL —" — go through each of their contentions with responses
 2. Label "— OPPOSITION CONSTRUCTIVE —" — C1, C2, (C3 if strong). Each: Claim, Warrant, Impact.
 Keep all bullets short. No prose.
 End with one line: "Your turn — rebut my case and defend yours."`,
@@ -63,7 +131,7 @@ You are Government. The Opposition just said:
 "${userSpeech}"
 
 Output in FLOW FORMAT:
-1. Label "— GOVERNMENT REBUTTAL —" — → responses to each OPP contention, call out drops
+1. Label "— GOVERNMENT REBUTTAL —" — responses to each OPP contention, call out drops
 2. Label "— GOVERNMENT EXTENSION —" — re-extend your own contentions, show they still stand
 Keep all bullets short. No prose.
 End with one line: "Your turn — defend your case, attack my extensions. Then whip speeches."`,
@@ -73,7 +141,7 @@ You are Opposition. Government just extended:
 "${userSpeech}"
 
 Output in FLOW FORMAT:
-Label "— OPPOSITION REBUTTAL —" — → responses to their extensions, reinforce your own contentions
+Label "— OPPOSITION REBUTTAL —" — responses to their extensions, reinforce your own contentions
 Keep all bullets short. No prose.
 End with one line: "Your turn — rebut and defend. Then whip speeches."`,
 
@@ -89,17 +157,21 @@ Label "— ${botSide.toUpperCase()} WHIP —"
 NO new arguments. Keep bullets short.
 End with one line: "Your turn — final whip speech."`,
 
-  judge_critique: (res, userSide, botSide, userWhip) => `Resolution: "${res}"
-User was ${userSide}. Bot was ${botSide}. User's final whip:
-"${userWhip}"
+  judge_critique: (res, userSide, botSide, userWhip, difficulty) => {
+    const diffLabel = DIFFICULTY[difficulty]?.label || "Varsity";
+    return `Resolution: "${res}"
+Difficulty: ${diffLabel}. Human debated as ${userSide}. AI opponent debated as ${botSide}.
+Human's final whip: "${userWhip}"
 
-Round is over. Write a JUDGE'S CRITIQUE in full prose (this is the one section that is NOT flow format).
-Label it: "— JUDGE'S CRITIQUE —"
-1. Who won and why — name the decisive arguments specifically
-2. What did the user do well?
-3. What did the user drop or fail to answer?
-4. What should they improve?
-Be honest. Don't sugarcoat.`,
+You are an impartial judge. Evaluate this round fairly — do not favor either side.
+Label: "— JUDGE'S DECISION —"
+
+1. DECISION: Who won — ${userSide} or ${botSide} — and the core reason in 1-2 sentences.
+2. DECISIVE ARGUMENTS: The 2-3 arguments that decided the round. Be specific.
+3. WHAT THE HUMAN DID WELL: Genuine praise only. Do not inflate.
+4. WHAT THE HUMAN DROPPED OR LOST: Be direct. Name specific arguments.
+5. WHAT TO IMPROVE: Specific, actionable coaching.`;
+  },
 };
 
 const s = {
@@ -172,14 +244,22 @@ const s = {
   startBtn: { width:"100%", background:"#4f46e5", color:"#fff", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"pointer", marginTop:4 },
   startBtnDisabled: { width:"100%", background:"#f1f5f9", color:"#cbd5e1", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"not-allowed", marginTop:4 },
   backBtn: { background:"none", border:"none", color:"#94a3b8", fontSize:12, cursor:"pointer", marginTop:14, fontFamily:"Georgia, serif", display:"block", textAlign:"center", width:"100%" },
+  diffGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
+  diffBtn: (active, color, bg, border) => ({
+    padding:"10px 8px", borderRadius:10, fontSize:12, fontWeight: active ? 700 : 600,
+    border: active ? `2px solid ${color}` : "2px solid #e2e8f0",
+    background: active ? bg : "#fff",
+    color: active ? color : "#64748b",
+    cursor:"pointer", textAlign:"center",
+  }),
 };
 
-const callGemini = async (prompt) => {
+const callGemini = async (prompt, systemOverride = null) => {
   const res = await fetch("/api/gemini", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      system: SYSTEM_PROMPT,
+      system: systemOverride || getSystemPrompt("varsity"),
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -201,7 +281,10 @@ export default function App() {
   const [setupResText, setSetupResText] = useState("");
   const [setupLoading, setSetupLoading] = useState(false);
 
+  const [setupDifficulty, setSetupDifficulty] = useState("varsity");
+
   // Round
+  const [difficulty, setDifficulty] = useState("varsity");
   const [resolution, setResolution] = useState("");
   const [userSide, setUserSide] = useState(null); // "Government" | "Opposition"
   const [botSide, setBotSide] = useState(null);
@@ -229,13 +312,14 @@ export default function App() {
     setMessages(prev => [...prev, { role:"assistant", content, type }]);
   };
 
-  const botSpeak = async (prompt, type = "opponent") => {
+  const botSpeak = async (prompt, type = "opponent", useJudge = false) => {
     setLoading(true);
     try {
-      const text = await callGemini(prompt);
+      const sys = useJudge ? JUDGE_SYSTEM : getSystemPrompt(difficulty);
+      const text = await callGemini(prompt, sys);
       addBotMessage(text, type);
     } catch (e) {
-      addBotMessage("Something went wrong — please try again.", type);
+      addBotMessage(`Error: ${e.message} — please try again.`, type);
     }
     setLoading(false);
   };
@@ -247,7 +331,7 @@ export default function App() {
     const topic = topics[Math.floor(Math.random() * topics.length)];
     const seed = Math.floor(Math.random() * 99999);
     try {
-      const text = await callGemini(`Generate one unique, specific high school parliamentary debate resolution about ${topic}. Seed: ${seed}. Format examples: 'This house would ban social media for minors.' or 'This house believes that democracies should impose term limits on all elected officials.' Return ONLY the resolution text. No quotes, no explanation, nothing else.`);
+      const text = await callGemini(`Generate one unique, specific high school parliamentary debate resolution about ${topic}. Seed: ${seed}. Format examples: 'This house would ban social media for minors.' or 'This house believes that democracies should impose term limits on all elected officials.' Return ONLY the resolution text. No quotes, no explanation, nothing else.`, "You generate debate resolutions. Return only the resolution text, nothing else.");
       setSetupResText(text.trim().replace(/^["']|["']$/g, "").replace(/\.$/, ""));
       setSetupResMode("done");
     } catch {
@@ -270,6 +354,7 @@ export default function App() {
     const bSide = setupSide === "gov" ? "Opposition" : "Government";
 
     // Set all state first, then switch mode
+    setDifficulty(setupDifficulty);
     setResolution(res);
     setUserSide(uSide);
     setBotSide(bSide);
@@ -282,7 +367,7 @@ export default function App() {
       setLoading(true);
       setAppMode("practice");
       try {
-        const text = await callGemini(ROUND_PROMPTS.gov_opens(res));
+        const text = await callGemini(ROUND_PROMPTS.gov_opens(res), getSystemPrompt(setupDifficulty));
         setMessages([{ role:"assistant", content:text, type:"opponent" }]);
         setStage(2);
       } catch (e) {
@@ -335,7 +420,7 @@ export default function App() {
         setStage(6);
       } else if (stage === 6) {
         setStage(7);
-        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Government", "Opposition", userText), "judge");
+        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Government", "Opposition", userText, difficulty), "judge", true);
         setRoundOver(true);
       }
     } else {
@@ -350,7 +435,7 @@ export default function App() {
         setStage(6);
       } else if (stage === 6) {
         setStage(7);
-        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Opposition", "Government", userText), "judge");
+        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Opposition", "Government", userText, difficulty), "judge", true);
         setRoundOver(true);
       }
     }
@@ -407,6 +492,7 @@ export default function App() {
     setSetupResMode(null);
     setSetupResText("");
     setSetupLoading(false);
+    setSetupDifficulty("varsity");
     setResolution("");
     setUserSide(null);
     setBotSide(null);
@@ -533,6 +619,22 @@ export default function App() {
             </div>
 
             <div style={s.setupSection}>
+              <span style={s.setupSectionLabel}>Difficulty</span>
+              <div style={s.diffGrid}>
+                {Object.entries(DIFFICULTY).map(([key, d]) => (
+                  <button
+                    key={key}
+                    style={s.diffBtn(setupDifficulty === key, d.color, d.bg, d.border)}
+                    onClick={() => setSetupDifficulty(key)}
+                  >
+                    {d.label}
+                    <div style={{ fontSize:10, fontWeight:400, marginTop:3, opacity:0.8 }}>{d.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Resolution</span>
               <div style={s.optionGrid}>
                 <button
@@ -589,6 +691,7 @@ export default function App() {
           </div>
           <div style={s.headerBadges}>
             <span style={userSide === "Government" ? s.badgeGov : s.badgeOpp}>{userSide === "Government" ? "▲ GOV" : "▼ OPP"}</span>
+            <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background: DIFFICULTY[difficulty]?.bg || "#ede9fe", color: DIFFICULTY[difficulty]?.color || "#7c3aed", border:`1px solid ${DIFFICULTY[difficulty]?.border || "#ddd6fe"}` }}>{DIFFICULTY[difficulty]?.label || "Varsity"}</span>
             <span style={s.badgePractice}>⚔ FULL ROUND</span>
             <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
           </div>
