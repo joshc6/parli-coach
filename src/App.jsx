@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 // ── DIFFICULTY CONFIGS ───────────────────────────────────────────────────────
 
@@ -62,36 +62,53 @@ const DIFFICULTY = {
   },
 };
 
-const getSystemPrompt = (difficulty = "varsity") => {
+const getFlowSystemPrompt = (difficulty = "varsity") => {
   const d = DIFFICULTY[difficulty];
-  return `You are an expert high school parliamentary debate coach simulating an opponent in a full practice round.
-
-${d.botInstructions}
-
-FLOW FORMAT RULES — ALL OPPONENT SPEECHES MUST FOLLOW THESE:
-You are outputting a DEBATE FLOW, not a written speech. Format everything as a debater would flow it on paper.
-- Use short, punchy bullet points — 5-12 words max per bullet
-- Each contention gets a label: "C1:", "C2:", "C3:"
-- Each argument gets sub-bullets indented under it
-- Label each argument layer: "Claim:", "Warrant:", "Impact:"
-- For rebuttals label each response: "[arrow] [their arg]: [your response in 1 line]"
-- NO full sentences, NO paragraphs, NO transitions, NO filler
-- Think of it as what a debater would write on their flow sheet
-
-EXAMPLE FORMAT for a constructive:
-— GOVERNMENT CONSTRUCTIVE —
-Definitions: [resolution] = [brief def]
-
-C1: [Short contention title]
-  Claim: [one line]
-  Warrant: [one line]
-  Impact: [one line]
-
-C2: [Short contention title]
-  Claim: [one line]
-  Warrant: [one line]
-  Impact: [one line]`;
+  return "You are a parliamentary debate opponent. " + d.botInstructions + "\n\n" +
+    "Output ONLY a debate flow sheet. Short bullet points, 5-12 words max. " +
+    "Contentions: C1:, C2:, C3: with Claim:, Warrant:, Impact: under each. " +
+    "Rebuttals: -> [their arg]: [your response]. No full sentences. No prose. No explanations.";
 };
+
+const getVerbatimSystemPrompt = (difficulty = "varsity") => {
+  const d = DIFFICULTY[difficulty];
+  return "You are a parliamentary debate opponent delivering a spoken speech. " + d.botInstructions + "\n\n" +
+    "Output ONLY the full verbatim speech as it would be spoken aloud. " +
+    "Natural rhetoric, varied sentence structure, real persuasion. " +
+    "Sound like a real debater, not an AI. No bullet points, no labels, no formatting. " +
+    "Just the speech as spoken words. Do NOT use this-isn't-X-its-Y phrasing. " +
+    "Do NOT cite stats or studies that require lookup — argue from logic and first principles.";
+};
+
+const parseResponse = (text) => {
+  const verbatimMatch = text.match(/\[VERBATIM\]([\s\S]*?)\[\/VERBATIM\]/);
+  const flowMatch = text.match(/\[FLOW\]([\s\S]*?)\[\/FLOW\]/);
+  return {
+    verbatim: verbatimMatch ? verbatimMatch[1].trim() : text,
+    flow: flowMatch ? flowMatch[1].trim() : text,
+  };
+};
+
+const speakText = (text, onDone) => {
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.05;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v =>
+    v.name.includes("Google US English") ||
+    v.name.includes("Alex") ||
+    v.name.includes("Samantha") ||
+    v.lang === "en-US"
+  ) || voices[0];
+  if (preferred) utter.voice = preferred;
+  utter.onend = () => { if (onDone) onDone(); };
+  utter.onerror = () => { if (onDone) onDone(); };
+  window.speechSynthesis.speak(utter);
+};
+
+const stopSpeaking = () => window.speechSynthesis.cancel();
 
 const JUDGE_SYSTEM = `You are an impartial parliamentary debate judge. Your only job is to evaluate who won based on the arguments made.
 
@@ -245,6 +262,14 @@ const s = {
   startBtnDisabled: { width:"100%", background:"#f1f5f9", color:"#cbd5e1", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"not-allowed", marginTop:4 },
   backBtn: { background:"none", border:"none", color:"#94a3b8", fontSize:12, cursor:"pointer", marginTop:14, fontFamily:"Georgia, serif", display:"block", textAlign:"center", width:"100%" },
   diffGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
+  micBtn: (recording) => ({
+    width:52, height:52, borderRadius:"50%", border:"none", cursor:"pointer", fontSize:20, flexShrink:0,
+    background: recording ? "#dc2626" : "#6366f1",
+    boxShadow: recording ? "0 0 0 6px rgba(220,38,38,0.2)" : "0 0 0 3px rgba(99,102,241,0.2)",
+    transition:"all 0.2s", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff",
+  }),
+  transcriptBox: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#1e293b", minHeight:52, lineHeight:1.6, fontFamily:"Georgia, serif" },
+  replayBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer", marginTop:8 },
   diffBtn: (active, color, bg, border) => ({
     padding:"10px 8px", borderRadius:10, fontSize:12, fontWeight: active ? 700 : 600,
     border: active ? `2px solid ${color}` : "2px solid #e2e8f0",
@@ -259,7 +284,7 @@ const callGemini = async (prompt, systemOverride = null) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      system: systemOverride || getSystemPrompt("varsity"),
+      system: systemOverride || getFlowSystemPrompt("varsity"),
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -294,6 +319,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [roundOver, setRoundOver] = useState(false);
 
+  // Voice / mic state
+  const [speaking, setSpeaking] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [interimTranscript, setInterimTranscript] = useState("");
+  const recognitionRef = useRef(null);
+
   // Case gen
   const [caseRes, setCaseRes] = useState("");
   const [caseSide, setCaseSide] = useState(null);
@@ -315,11 +347,23 @@ export default function App() {
   const botSpeak = async (prompt, type = "opponent", useJudge = false) => {
     setLoading(true);
     try {
-      const sys = useJudge ? JUDGE_SYSTEM : getSystemPrompt(difficulty);
-      const text = await callGemini(prompt, sys);
-      addBotMessage(text, type);
+      if (useJudge) {
+        const text = await callGemini(prompt, JUDGE_SYSTEM);
+        setMessages(prev => [...prev, { role:"assistant", content:text, flow:text, verbatim:text, type }]);
+        setSpeaking(true);
+        speakText(text, () => setSpeaking(false));
+      } else {
+        // Two separate calls: flow for display, verbatim for speech
+        const [flow, verbatim] = await Promise.all([
+          callGemini(prompt, getFlowSystemPrompt(difficulty)),
+          callGemini(prompt, getVerbatimSystemPrompt(difficulty)),
+        ]);
+        setMessages(prev => [...prev, { role:"assistant", content:flow, flow, verbatim, type }]);
+        setSpeaking(true);
+        speakText(verbatim, () => setSpeaking(false));
+      }
     } catch (e) {
-      addBotMessage(`Error: ${e.message} — please try again.`, type);
+      setMessages(prev => [...prev, { role:"assistant", content:`Error: ${e.message} — please try again.`, flow:`Error: ${e.message}`, verbatim:"", type }]);
     }
     setLoading(false);
   };
@@ -367,8 +411,13 @@ export default function App() {
       setLoading(true);
       setAppMode("practice");
       try {
-        const text = await callGemini(ROUND_PROMPTS.gov_opens(res), getSystemPrompt(setupDifficulty));
-        setMessages([{ role:"assistant", content:text, type:"opponent" }]);
+        const [fl, vb] = await Promise.all([
+          callGemini(ROUND_PROMPTS.gov_opens(res), getFlowSystemPrompt(setupDifficulty)),
+          callGemini(ROUND_PROMPTS.gov_opens(res), getVerbatimSystemPrompt(setupDifficulty)),
+        ]);
+        setMessages([{ role:"assistant", content:fl, flow:fl, verbatim:vb, type:"opponent" }]);
+        setSpeaking(true);
+        speakText(vb, () => setSpeaking(false));
         setStage(2);
       } catch (e) {
         setMessages([{ role:"assistant", content:`Error: ${e.message} — please go back and try again.`, type:"opponent" }]);
@@ -399,10 +448,50 @@ export default function App() {
   // 6 = user whip
   // 7 = judge (loading) → done
 
+  // Load voices on mount
+  useEffect(() => {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }, []);
+
+  const startRecording = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert("Speech recognition not supported. Please use Chrome."); return; }
+    stopSpeaking();
+    setSpeaking(false);
+    const recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    let finalText = transcript;
+    recognition.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) { finalText += e.results[i][0].transcript + " "; }
+        else { interim = e.results[i][0].transcript; }
+      }
+      setTranscript(finalText);
+      setInterimTranscript(interim);
+    };
+    recognition.onend = () => { setRecording(false); setInterimTranscript(""); };
+    recognition.onerror = () => { setRecording(false); setInterimTranscript(""); };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setRecording(true);
+  }, [transcript]);
+
+  const stopRecording = useCallback(() => {
+    recognitionRef.current?.stop();
+    setRecording(false);
+    setInterimTranscript("");
+  }, []);
+
   const handleUserSpeech = async () => {
-    if (!input.trim() || loading) return;
-    const userText = input.trim();
+    const userText = (transcript.trim() || input.trim());
+    if (!userText || loading || speaking) return;
     setInput("");
+    setTranscript("");
+    setInterimTranscript("");
     setMessages(prev => [...prev, { role:"user", content:userText, type:"user" }]);
 
     if (userSide === "Government") {
@@ -457,7 +546,7 @@ export default function App() {
   };
 
   const isUserTurn = () => {
-    if (roundOver || loading) return false;
+    if (roundOver || loading || speaking) return false;
     if (userSide === "Government") return [0, 2, 4, 6].includes(stage);
     return [2, 4, 6].includes(stage);
   };
@@ -488,6 +577,12 @@ export default function App() {
 
   const resetToLanding = () => {
     setAppMode("landing");
+    stopSpeaking();
+    recognitionRef.current?.stop();
+    setSpeaking(false);
+    setRecording(false);
+    setTranscript("");
+    setInterimTranscript("");
     setSetupSide(null);
     setSetupResMode(null);
     setSetupResText("");
@@ -693,6 +788,8 @@ export default function App() {
             <span style={userSide === "Government" ? s.badgeGov : s.badgeOpp}>{userSide === "Government" ? "▲ GOV" : "▼ OPP"}</span>
             <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background: DIFFICULTY[difficulty]?.bg || "#ede9fe", color: DIFFICULTY[difficulty]?.color || "#7c3aed", border:`1px solid ${DIFFICULTY[difficulty]?.border || "#ddd6fe"}` }}>{DIFFICULTY[difficulty]?.label || "Varsity"}</span>
             <span style={s.badgePractice}>⚔ FULL ROUND</span>
+            {speaking && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ede9fe", color:"#7c3aed", border:"1px solid #ddd6fe" }}>🔊 Speaking</span>}
+            {recording && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fee2e2", color:"#dc2626", border:"1px solid #fecaca" }}>🔴 Recording</span>}
             <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
           </div>
         </header>
@@ -712,6 +809,12 @@ export default function App() {
                 </div>
               ))}
             </div>
+            {speaking && (
+              <div>
+                <p style={s.sideLabel}>Audio</p>
+                <button style={s.actionBtn} onClick={() => { stopSpeaking(); setSpeaking(false); }}>⏹ Stop Speaking</button>
+              </div>
+            )}
             {roundOver && (
               <button style={{ ...s.actionBtn, background:"#4f46e5", color:"#fff", border:"none", fontWeight:700, cursor:"pointer" }} onClick={() => setAppMode("setup")}>🔄 New Round</button>
             )}
@@ -739,6 +842,11 @@ export default function App() {
                     {msg.role === "assistant" && msg.type === "judge" && <div style={{ ...s.msgTag, color:"#15803d" }}>🏛 Judge's Critique</div>}
                     {msg.role === "user" && <div style={{ ...s.msgTag, color:"rgba(255,255,255,0.6)" }}>🎤 {userSide}</div>}
                     {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
+                    {msg.role === "assistant" && msg.verbatim && (
+                      <button style={s.replayBtn} onClick={() => { stopSpeaking(); setSpeaking(true); speakText(msg.verbatim, () => setSpeaking(false)); }}>
+                        🔊 Replay speech
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -747,7 +855,7 @@ export default function App() {
                 <div style={s.msgWrapAsst}>
                   <div style={s.msgAsstOpponent}>
                     <div style={{ ...s.msgTag, color:"#be123c" }}>⚔ {botSide}</div>
-                    <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Speaking</span>
+                    <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Preparing speech</span>
                     <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                   </div>
                 </div>
@@ -757,25 +865,44 @@ export default function App() {
 
             <div style={s.inputBar}>
               {label && <div style={s.speechLabel}>🎤 {label}</div>}
-              {!userTurn && !loading && !roundOver && <div style={{ fontSize:11, color:"#94a3b8", marginBottom:6, fontFamily:"monospace" }}>Opponent is preparing...</div>}
-              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>✓ Round complete — see judge's critique above</div>}
+              {speaking && <div style={{ fontSize:11, color:"#7c3aed", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>🔊 Opponent speaking — hit mic to interrupt</div>}
+              {!userTurn && !loading && !speaking && !roundOver && <div style={{ fontSize:11, color:"#94a3b8", marginBottom:6, fontFamily:"monospace" }}>Opponent is preparing...</div>}
+              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>✓ Round complete — see judge's decision above</div>}
               <div style={s.inputRow}>
-                <textarea
-                  style={s.inputTextarea}
-                  rows={3}
-                  placeholder={roundOver ? "Round is over." : !userTurn ? "Wait for the opponent..." : "Deliver your speech — refute their points and build your own case."}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={!userTurn}
-                  onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); if (input.trim()&&userTurn) handleUserSpeech(); }}}
-                />
                 <button
-                  style={!input.trim()||!userTurn ? s.sendBtnDisabled : s.sendBtnRed}
+                  style={s.micBtn(recording)}
+                  onClick={recording ? stopRecording : startRecording}
+                  disabled={!userTurn && !recording}
+                  title={recording ? "Stop recording" : "Start recording"}
+                >
+                  {recording ? "⏹" : "🎤"}
+                </button>
+                <div style={s.transcriptBox}>
+                  {transcript || interimTranscript
+                    ? <span>{transcript}<span style={{ color:"#94a3b8" }}>{interimTranscript}</span></span>
+                    : <span style={{ color:"#cbd5e1" }}>
+                        {roundOver ? "Round is over." : !userTurn ? "Wait for opponent..." : "Hit mic and speak, or type below..."}
+                      </span>
+                  }
+                </div>
+                <button
+                  style={!(transcript.trim()||input.trim())||!userTurn||speaking ? s.sendBtnDisabled : s.sendBtnRed}
                   onClick={handleUserSpeech}
-                  disabled={!input.trim()||!userTurn}
+                  disabled={!(transcript.trim()||input.trim())||!userTurn||speaking}
                 >Deliver</button>
               </div>
-              <div style={s.inputHint}>Enter to deliver · Shift+Enter for new line</div>
+              <div style={s.inputRow} style={{ marginTop:6 }}>
+                <textarea
+                  style={{ ...s.inputTextarea, fontSize:12 }}
+                  rows={2}
+                  placeholder="Or type your speech here..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={!userTurn || speaking}
+                  onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); if ((input.trim()||transcript.trim())&&userTurn) handleUserSpeech(); }}}
+                />
+              </div>
+              <div style={s.inputHint}>🎤 Mic to record · Type to write · Deliver when done · Chrome recommended</div>
             </div>
           </main>
         </div>
