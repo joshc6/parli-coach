@@ -72,15 +72,17 @@ const getFlowSystemPrompt = (difficulty = "varsity") => {
 
 const getVerbatimSystemPrompt = (difficulty = "varsity") => {
   const d = DIFFICULTY[difficulty];
-  return "You are converting a debate flow sheet into a full spoken speech. " + d.botInstructions + "\n\n" +
-    "You will be given a flow sheet. Your job is to expand EVERY point on that flow into natural spoken sentences, " +
-    "in the EXACT SAME ORDER and covering the EXACT SAME ARGUMENTS as the flow. Do not add new arguments. Do not skip any. " +
-    "Output ONLY the spoken speech as continuous prose. " +
-    "ABSOLUTELY NO bullet points, dashes, asterisks, stars, labels, headers, C1/C2/C3, Claim/Warrant/Impact, or any formatting symbols whatsoever. " +
-    "If you include any asterisks or bullet symbols the output is wrong. " +
-    "Write exactly how a real high school debater speaks out loud — fast, confident, persuasive, natural transitions. " +
-    "Use phrases like 'My first contention is...' 'Moving to my second point...' 'Look at what they dropped...' " +
-    "Sound like a real debater, not a robot reading a list. Vary your cadence. Build to your impacts.";
+  return "You are converting a debate flow into a spoken speech. " + d.botInstructions + "\n\n" +
+    "THE SINGLE MOST IMPORTANT RULE: Your output will be fed directly into text-to-speech. " +
+    "If you write any of these characters they will be spoken aloud literally and it will sound terrible: " +
+    "* (asterisk), - (dash), — (em dash), • (bullet), # (hash), _ (underscore), -> (arrow), C1 C2 C3, Claim: Warrant: Impact: " +
+    "DO NOT USE ANY OF THOSE CHARACTERS OR LABELS. NOT EVEN ONCE. " +
+    "Output ONLY plain English sentences with no formatting whatsoever. No lists. No structure. No symbols. " +
+    "Just write exactly what a debater would say out loud. " +
+    "Expand every argument from the flow into full natural sentences in the same order. " +
+    "Speak like a confident high school debater: fast, direct, persuasive. " +
+    "Use natural spoken transitions: 'My first contention is', 'Now look at their case', 'They dropped', 'The reason this matters', 'At the end of the day'. " +
+    "No bullet points. No dashes. No asterisks. No labels. Plain spoken English only.";
 };
 
 const parseResponse = (text) => {
@@ -92,37 +94,50 @@ const parseResponse = (text) => {
   };
 };
 
+const cleanForSpeech = (text) => {
+  let t = text;
+  t = t.replace(/Claim:/gi, "");
+  t = t.replace(/Warrant:/gi, "");
+  t = t.replace(/Impact:/gi, "");
+  t = t.replace(/Sub:/gi, "");
+  t = t.replace(/C[0-9]+:/gi, "");
+  t = t.split("").filter(c => {
+    const bad = ["*", "-", "—", "–", "•", "→", "#", "_", "`", "[", "]"];
+    return !bad.includes(c);
+  }).join("");
+  t = t.replace(/
+/g, " ");
+  t = t.replace(/ {2,}/g, " ");
+  return t.trim();
+};
+
 const speakText = (text, onDone) => {
   window.speechSynthesis.cancel();
-  // Aggressively strip all non-speech characters
-  const cleanText = text
-    .replace(/[*_~`#]/g, "")           // markdown symbols
-    .replace(/^[-•–—]\s+/gm, "")       // bullet points and dashes
-    .replace(/^(C[0-9]+:|Claim:|Warrant:|Impact:|->|→)\s*/gim, "")  // flow labels
-    .replace(/—\s*/g, " ")             // em dashes
-    .replace(/\[.*?\]/g, "")           // brackets
-    .replace(/
-+/g, " ")              // newlines to spaces
-    .replace(/\s{2,}/g, " ")           // multiple spaces
-    .trim();
-  const utter = new SpeechSynthesisUtterance(cleanText);
-  utter.rate = 1.15;
-  utter.pitch = 1.0;
-  utter.volume = 1.0;
-  const voices = window.speechSynthesis.getVoices();
-  const preferred =
-    voices.find(v => v.name === "Google US English") ||
-    voices.find(v => v.name.includes("Google") && v.lang === "en-US") ||
-    voices.find(v => v.name === "Alex") ||
-    voices.find(v => v.name === "Samantha") ||
-    voices.find(v => v.name.includes("Natural") && v.lang.startsWith("en")) ||
-    voices.find(v => v.lang === "en-US" && !v.name.includes("eSpeak")) ||
-    voices.find(v => v.lang.startsWith("en")) ||
-    voices[0];
-  if (preferred) utter.voice = preferred;
-  utter.onend = () => { if (onDone) onDone(); };
-  utter.onerror = () => { if (onDone) onDone(); };
-  window.speechSynthesis.speak(utter);
+  const cleanText = cleanForSpeech(text);
+  const doSpeak = () => {
+    const utter = new SpeechSynthesisUtterance(cleanText);
+    utter.rate = 1.2;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred =
+      voices.find(v => v.name === "Google US English") ||
+      voices.find(v => v.name === "Google UK English Male") ||
+      voices.find(v => v.name.startsWith("Google") && v.lang.startsWith("en")) ||
+      voices.find(v => v.name === "Alex") ||
+      voices.find(v => v.name === "Samantha") ||
+      voices.find(v => v.lang === "en-US") ||
+      voices[0];
+    if (preferred) utter.voice = preferred;
+    utter.onend = () => { if (onDone) onDone(); };
+    utter.onerror = () => { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utter);
+  };
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = doSpeak;
+  } else {
+    doSpeak();
+  }
 };
 
 const stopSpeaking = () => window.speechSynthesis.cancel();
