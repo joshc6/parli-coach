@@ -72,14 +72,15 @@ const getFlowSystemPrompt = (difficulty = "varsity") => {
 
 const getVerbatimSystemPrompt = (difficulty = "varsity") => {
   const d = DIFFICULTY[difficulty];
-  return "You are a parliamentary debate opponent delivering a FULL SPOKEN SPEECH. " + d.botInstructions + "\n\n" +
-    "CRITICAL: Output ONLY natural spoken prose. Absolutely NO bullet points. NO dashes. NO labels like C1 or Claim or Warrant. NO formatting whatsoever. " +
-    "Write exactly as a debater would speak — complete sentences, real transitions, genuine rhetoric. " +
-    "This text will be read aloud by text-to-speech so it must sound completely natural when spoken. " +
-    "Include all your arguments fully developed in natural speech form. " +
-    "Sound like a real high school debater. Vary your sentence structure. Use persuasive language. " +
-    "Do NOT use bullet points under any circumstances. Do NOT use dashes. Do NOT use headers or labels. " +
-    "Just continuous natural spoken English from start to finish.";
+  return "You are converting a debate flow sheet into a full spoken speech. " + d.botInstructions + "\n\n" +
+    "You will be given a flow sheet. Your job is to expand EVERY point on that flow into natural spoken sentences, " +
+    "in the EXACT SAME ORDER and covering the EXACT SAME ARGUMENTS as the flow. Do not add new arguments. Do not skip any. " +
+    "Output ONLY the spoken speech as continuous prose. " +
+    "ABSOLUTELY NO bullet points, dashes, asterisks, stars, labels, headers, C1/C2/C3, Claim/Warrant/Impact, or any formatting symbols whatsoever. " +
+    "If you include any asterisks or bullet symbols the output is wrong. " +
+    "Write exactly how a real high school debater speaks out loud — fast, confident, persuasive, natural transitions. " +
+    "Use phrases like 'My first contention is...' 'Moving to my second point...' 'Look at what they dropped...' " +
+    "Sound like a real debater, not a robot reading a list. Vary your cadence. Build to your impacts.";
 };
 
 const parseResponse = (text) => {
@@ -93,19 +94,22 @@ const parseResponse = (text) => {
 
 const speakText = (text, onDone) => {
   window.speechSynthesis.cancel();
-  // Strip any leftover bullet formatting before speaking
+  // Aggressively strip all non-speech characters
   const cleanText = text
-    .replace(/^[-•]\s+/gm, "")
-    .replace(/^(C[0-9]:|Claim:|Warrant:|Impact:|->|—)\s*/gm, "")
+    .replace(/[*_~`#]/g, "")           // markdown symbols
+    .replace(/^[-•–—]\s+/gm, "")       // bullet points and dashes
+    .replace(/^(C[0-9]+:|Claim:|Warrant:|Impact:|->|→)\s*/gim, "")  // flow labels
+    .replace(/—\s*/g, " ")             // em dashes
+    .replace(/\[.*?\]/g, "")           // brackets
     .replace(/
-+/g, " ")
++/g, " ")              // newlines to spaces
+    .replace(/\s{2,}/g, " ")           // multiple spaces
     .trim();
   const utter = new SpeechSynthesisUtterance(cleanText);
-  utter.rate = 0.95;
+  utter.rate = 1.15;
   utter.pitch = 1.0;
   utter.volume = 1.0;
   const voices = window.speechSynthesis.getVoices();
-  // Priority order: Google Natural voices first, then named good voices, then any en-US
   const preferred =
     voices.find(v => v.name === "Google US English") ||
     voices.find(v => v.name.includes("Google") && v.lang === "en-US") ||
@@ -366,11 +370,11 @@ export default function App() {
         setSpeaking(true);
         speakText(text, () => setSpeaking(false));
       } else {
-        // Two separate calls: flow for display, verbatim for speech
-        const [flow, verbatim] = await Promise.all([
-          callGemini(prompt, getFlowSystemPrompt(difficulty)),
-          callGemini(prompt, getVerbatimSystemPrompt(difficulty)),
-        ]);
+        // Step 1: Generate flow first
+        const flow = await callGemini(prompt, getFlowSystemPrompt(difficulty));
+        // Step 2: Pass the flow to verbatim so it speaks the SAME arguments
+        const verbatimPrompt = "Here is the debate flow to expand into a spoken speech:\n\n" + flow + "\n\nNow deliver this as a full natural spoken speech. Same arguments, same order, no bullet points, no symbols, just natural spoken prose as a real debater would say it.";
+        const verbatim = await callGemini(verbatimPrompt, getVerbatimSystemPrompt(difficulty));
         setMessages(prev => [...prev, { role:"assistant", content:flow, flow, verbatim, type }]);
         setSpeaking(true);
         speakText(verbatim, () => setSpeaking(false));
@@ -424,10 +428,9 @@ export default function App() {
       setLoading(true);
       setAppMode("practice");
       try {
-        const [fl, vb] = await Promise.all([
-          callGemini(ROUND_PROMPTS.gov_opens(res), getFlowSystemPrompt(setupDifficulty)),
-          callGemini(ROUND_PROMPTS.gov_opens(res), getVerbatimSystemPrompt(setupDifficulty)),
-        ]);
+        const fl = await callGemini(ROUND_PROMPTS.gov_opens(res), getFlowSystemPrompt(setupDifficulty));
+        const vbPrompt = "Here is the debate flow to expand into a spoken speech:\n\n" + fl + "\n\nNow deliver this as a full natural spoken speech. Same arguments, same order, no bullet points, no symbols, just natural spoken prose as a real debater would say it.";
+        const vb = await callGemini(vbPrompt, getVerbatimSystemPrompt(setupDifficulty));
         setMessages([{ role:"assistant", content:fl, flow:fl, verbatim:vb, type:"opponent" }]);
         setSpeaking(true);
         speakText(vb, () => setSpeaking(false));
