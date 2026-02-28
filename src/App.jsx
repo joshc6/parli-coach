@@ -100,8 +100,7 @@ const cleanForSpeech = (text) => {
   badWords.forEach(w => { t = t.split(w).join(""); });
   const badChars = ["*", "-", "—", "–", "•", "→", "#", "_", "`", "[", "]"];
   t = t.split("").map(c => badChars.includes(c) ? " " : c).join("");
-  t = t.split("
-").join(" ");
+  t = t.split(String.fromCharCode(10)).join(" ");
   while (t.includes("  ")) { t = t.split("  ").join(" "); }
   return t.trim();
 };
