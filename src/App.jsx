@@ -95,19 +95,14 @@ const parseResponse = (text) => {
 };
 
 const cleanForSpeech = (text) => {
+  const badWords = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:"];
   let t = text;
-  t = t.replace(/Claim:/gi, "");
-  t = t.replace(/Warrant:/gi, "");
-  t = t.replace(/Impact:/gi, "");
-  t = t.replace(/Sub:/gi, "");
-  t = t.replace(/C[0-9]+:/gi, "");
-  t = t.split("").filter(c => {
-    const bad = ["*", "-", "—", "–", "•", "→", "#", "_", "`", "[", "]"];
-    return !bad.includes(c);
-  }).join("");
-  t = t.replace(/
-/g, " ");
-  t = t.replace(/ {2,}/g, " ");
+  badWords.forEach(w => { t = t.split(w).join(""); });
+  const badChars = ["*", "-", "—", "–", "•", "→", "#", "_", "`", "[", "]"];
+  t = t.split("").map(c => badChars.includes(c) ? " " : c).join("");
+  t = t.split("
+").join(" ");
+  while (t.includes("  ")) { t = t.split("  ").join(" "); }
   return t.trim();
 };
 
