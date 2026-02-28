@@ -72,12 +72,14 @@ const getFlowSystemPrompt = (difficulty = "varsity") => {
 
 const getVerbatimSystemPrompt = (difficulty = "varsity") => {
   const d = DIFFICULTY[difficulty];
-  return "You are a parliamentary debate opponent delivering a spoken speech. " + d.botInstructions + "\n\n" +
-    "Output ONLY the full verbatim speech as it would be spoken aloud. " +
-    "Natural rhetoric, varied sentence structure, real persuasion. " +
-    "Sound like a real debater, not an AI. No bullet points, no labels, no formatting. " +
-    "Just the speech as spoken words. Do NOT use this-isn't-X-its-Y phrasing. " +
-    "Do NOT cite stats or studies that require lookup — argue from logic and first principles.";
+  return "You are a parliamentary debate opponent delivering a FULL SPOKEN SPEECH. " + d.botInstructions + "\n\n" +
+    "CRITICAL: Output ONLY natural spoken prose. Absolutely NO bullet points. NO dashes. NO labels like C1 or Claim or Warrant. NO formatting whatsoever. " +
+    "Write exactly as a debater would speak — complete sentences, real transitions, genuine rhetoric. " +
+    "This text will be read aloud by text-to-speech so it must sound completely natural when spoken. " +
+    "Include all your arguments fully developed in natural speech form. " +
+    "Sound like a real high school debater. Vary your sentence structure. Use persuasive language. " +
+    "Do NOT use bullet points under any circumstances. Do NOT use dashes. Do NOT use headers or labels. " +
+    "Just continuous natural spoken English from start to finish.";
 };
 
 const parseResponse = (text) => {
@@ -91,17 +93,28 @@ const parseResponse = (text) => {
 
 const speakText = (text, onDone) => {
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 1.05;
+  // Strip any leftover bullet formatting before speaking
+  const cleanText = text
+    .replace(/^[-•]\s+/gm, "")
+    .replace(/^(C[0-9]:|Claim:|Warrant:|Impact:|->|—)\s*/gm, "")
+    .replace(/
++/g, " ")
+    .trim();
+  const utter = new SpeechSynthesisUtterance(cleanText);
+  utter.rate = 0.95;
   utter.pitch = 1.0;
   utter.volume = 1.0;
   const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v =>
-    v.name.includes("Google US English") ||
-    v.name.includes("Alex") ||
-    v.name.includes("Samantha") ||
-    v.lang === "en-US"
-  ) || voices[0];
+  // Priority order: Google Natural voices first, then named good voices, then any en-US
+  const preferred =
+    voices.find(v => v.name === "Google US English") ||
+    voices.find(v => v.name.includes("Google") && v.lang === "en-US") ||
+    voices.find(v => v.name === "Alex") ||
+    voices.find(v => v.name === "Samantha") ||
+    voices.find(v => v.name.includes("Natural") && v.lang.startsWith("en")) ||
+    voices.find(v => v.lang === "en-US" && !v.name.includes("eSpeak")) ||
+    voices.find(v => v.lang.startsWith("en")) ||
+    voices[0];
   if (preferred) utter.voice = preferred;
   utter.onend = () => { if (onDone) onDone(); };
   utter.onerror = () => { if (onDone) onDone(); };
@@ -496,18 +509,22 @@ export default function App() {
 
     if (userSide === "Government") {
       if (stage === 0) {
+        // GOV constructive -> bot OPP constructive+rebuttal
         setStage(1);
         await botSpeak(ROUND_PROMPTS.opp_rebuts_and_constructs(resolution, userText));
         setStage(2);
       } else if (stage === 2) {
+        // GOV rebuttal+rebuild -> bot OPP rebuttal+rebuild
         setStage(3);
-        await botSpeak(ROUND_PROMPTS.opp_rebuts_and_constructs(resolution, userText));
+        await botSpeak(ROUND_PROMPTS.opp_rebuts_gov_extended(resolution, userText));
         setStage(4);
       } else if (stage === 4) {
+        // After OPP rebuild: bot delivers OPP whip
         setStage(5);
         await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Opposition", userText));
         setStage(6);
       } else if (stage === 6) {
+        // GOV whip (final) -> judge
         setStage(7);
         await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Government", "Opposition", userText, difficulty), "judge", true);
         setRoundOver(true);
@@ -515,14 +532,18 @@ export default function App() {
     } else {
       // User is OPP
       if (stage === 2) {
+        // OPP constructive+rebuttal -> bot GOV rebuttal+rebuild
         setStage(3);
         await botSpeak(ROUND_PROMPTS.gov_rebuts_and_extends(resolution, userText));
         setStage(4);
       } else if (stage === 4) {
-        setStage(5);
-        await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Government", userText));
+        // OPP rebuttal+rebuild -> user delivers OPP whip next (stage 6)
+        // But first nothing — user goes to stage 6 directly
         setStage(6);
       } else if (stage === 6) {
+        // OPP whip delivered -> bot GOV whip (final) -> judge
+        setStage(5);
+        await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Government", userText));
         setStage(7);
         await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Opposition", "Government", userText, difficulty), "judge", true);
         setRoundOver(true);
@@ -533,14 +554,14 @@ export default function App() {
   const getInputLabel = () => {
     if (roundOver || loading) return null;
     if (userSide === "Government") {
-      if (stage === 0) return "YOUR SPEECH — Government Opening Constructive";
-      if (stage === 2) return "YOUR SPEECH — Government Rebuttal";
-      if (stage === 4) return "YOUR SPEECH — Government Rebuttal (Pre-Whip)";
+      if (stage === 0) return "YOUR SPEECH — Government Constructive";
+      if (stage === 2) return "YOUR SPEECH — Government Rebuttal + Rebuild";
+      if (stage === 4) return "YOUR SPEECH — Government Rebuttal + Rebuild (2nd)";
       if (stage === 6) return "YOUR SPEECH — Government Whip (Final)";
     } else {
-      if (stage === 2) return "YOUR SPEECH — Opposition Rebuttal + Constructive";
-      if (stage === 4) return "YOUR SPEECH — Opposition Rebuttal";
-      if (stage === 6) return "YOUR SPEECH — Opposition Whip (Final)";
+      if (stage === 2) return "YOUR SPEECH — Opposition Constructive + Rebuttal";
+      if (stage === 4) return "YOUR SPEECH — Opposition Rebuttal + Rebuild";
+      if (stage === 6) return "YOUR SPEECH — Opposition Whip";
     }
     return null;
   };
@@ -565,12 +586,12 @@ export default function App() {
       ];
     }
     return [
-      { label:"Gov Opens", active: stage === 1, done: stage > 1 },
-      { label:"You Rebut", active: stage === 2, done: stage > 2 },
-      { label:"Gov Extends", active: stage === 3, done: stage > 3 },
-      { label:"You Rebut", active: stage === 4, done: stage > 4 },
-      { label:"Gov Whip", active: stage === 5, done: stage > 5 },
-      { label:"Your Whip", active: stage === 6, done: stage > 6 },
+      { label:"Gov Constructive", active: stage === 1, done: stage > 1 },
+      { label:"Opp Constructive+Rebuttal", active: stage === 2, done: stage > 2 },
+      { label:"Gov Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
+      { label:"Opp Rebuttal+Rebuild", active: stage === 4, done: stage > 4 },
+      { label:"Opp Whip", active: stage === 6, done: stage > 6 },
+      { label:"Gov Whip", active: stage === 7, done: roundOver },
       { label:"Judge", active: stage === 7, done: roundOver },
     ];
   };
