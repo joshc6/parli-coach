@@ -62,79 +62,15 @@ const DIFFICULTY = {
   },
 };
 
-const getFlowSystemPrompt = (difficulty = "varsity") => {
+const getFlowPrompt = (difficulty) => {
   const d = DIFFICULTY[difficulty];
-  return "You are a parliamentary debate opponent. " + d.botInstructions + "\n\n" +
-    "Output ONLY a debate flow sheet. Short bullet points, 5-12 words max. " +
-    "Contentions: C1:, C2:, C3: with Claim:, Warrant:, Impact: under each. " +
-    "Rebuttals: -> [their arg]: [your response]. No full sentences. No prose. No explanations.";
+  return "You are a parliamentary debate opponent. " + d.botInstructions + " Output ONLY a debate flow sheet. Short bullets, 5-12 words max. C1: C2: C3: with Claim: Warrant: Impact: under each. Rebuttals: their-arg: your-response. No full sentences.";
 };
 
-const getVerbatimSystemPrompt = (difficulty = "varsity") => {
+const getVerbatimPrompt = (difficulty) => {
   const d = DIFFICULTY[difficulty];
-  return "You are converting a debate flow into a spoken speech. " + d.botInstructions + "\n\n" +
-    "THE SINGLE MOST IMPORTANT RULE: Your output will be fed directly into text-to-speech. " +
-    "If you write any of these characters they will be spoken aloud literally and it will sound terrible: " +
-    "* (asterisk), - (dash), — (em dash), • (bullet), # (hash), _ (underscore), -> (arrow), C1 C2 C3, Claim: Warrant: Impact: " +
-    "DO NOT USE ANY OF THOSE CHARACTERS OR LABELS. NOT EVEN ONCE. " +
-    "Output ONLY plain English sentences with no formatting whatsoever. No lists. No structure. No symbols. " +
-    "Just write exactly what a debater would say out loud. " +
-    "Expand every argument from the flow into full natural sentences in the same order. " +
-    "Speak like a confident high school debater: fast, direct, persuasive. " +
-    "Use natural spoken transitions: 'My first contention is', 'Now look at their case', 'They dropped', 'The reason this matters', 'At the end of the day'. " +
-    "No bullet points. No dashes. No asterisks. No labels. Plain spoken English only.";
+  return "You are a parliamentary debate opponent delivering a spoken speech out loud. " + d.botInstructions + " CRITICAL: This text goes directly into text-to-speech. Do NOT write any of these characters or they will be spoken literally: asterisk, dash, bullet point, arrow, hash, underscore, C1 C2 C3, Claim Warrant Impact. Write ONLY plain natural spoken English sentences. Sound like a real confident debater. Use spoken transitions like My first contention is, Moving on, Look at what they dropped, The reason this matters. No formatting. No labels. No symbols. Just continuous natural speech.";
 };
-
-const parseResponse = (text) => {
-  const verbatimMatch = text.match(/\[VERBATIM\]([\s\S]*?)\[\/VERBATIM\]/);
-  const flowMatch = text.match(/\[FLOW\]([\s\S]*?)\[\/FLOW\]/);
-  return {
-    verbatim: verbatimMatch ? verbatimMatch[1].trim() : text,
-    flow: flowMatch ? flowMatch[1].trim() : text,
-  };
-};
-
-const cleanForSpeech = (text) => {
-  const badWords = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:"];
-  let t = text;
-  badWords.forEach(w => { t = t.split(w).join(""); });
-  const badChars = ["*", "-", "—", "–", "•", "→", "#", "_", "`", "[", "]"];
-  t = t.split("").map(c => badChars.includes(c) ? " " : c).join("");
-  t = t.split(String.fromCharCode(10)).join(" ");
-  while (t.includes("  ")) { t = t.split("  ").join(" "); }
-  return t.trim();
-};
-
-const speakText = (text, onDone) => {
-  window.speechSynthesis.cancel();
-  const cleanText = cleanForSpeech(text);
-  const doSpeak = () => {
-    const utter = new SpeechSynthesisUtterance(cleanText);
-    utter.rate = 1.2;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred =
-      voices.find(v => v.name === "Google US English") ||
-      voices.find(v => v.name === "Google UK English Male") ||
-      voices.find(v => v.name.startsWith("Google") && v.lang.startsWith("en")) ||
-      voices.find(v => v.name === "Alex") ||
-      voices.find(v => v.name === "Samantha") ||
-      voices.find(v => v.lang === "en-US") ||
-      voices[0];
-    if (preferred) utter.voice = preferred;
-    utter.onend = () => { if (onDone) onDone(); };
-    utter.onerror = () => { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utter);
-  };
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = doSpeak;
-  } else {
-    doSpeak();
-  }
-};
-
-const stopSpeaking = () => window.speechSynthesis.cancel();
 
 const JUDGE_SYSTEM = `You are an impartial parliamentary debate judge. Your only job is to evaluate who won based on the arguments made.
 
@@ -217,6 +153,51 @@ Label: "— JUDGE'S DECISION —"
   },
 };
 
+
+// ── VOICE HELPERS ─────────────────────────────────────────────────────────────
+
+const cleanForSpeech = (text) => {
+  const remove = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:", "->", "→"];
+  let t = text;
+  remove.forEach(w => { t = t.split(w).join(""); });
+  const badChars = ["*", "_", "#", "`", "[", "]", "•", "—", "–"];
+  t = t.split("").map(c => badChars.includes(c) ? " " : c).join("");
+  t = t.split(String.fromCharCode(10)).join(" ");
+  t = t.split(String.fromCharCode(13)).join(" ");
+  while (t.indexOf("  ") !== -1) { t = t.split("  ").join(" "); }
+  return t.trim();
+};
+
+const speakText = (text, onDone) => {
+  window.speechSynthesis.cancel();
+  const clean = cleanForSpeech(text);
+  const doSpeak = () => {
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.rate = 1.2;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const pick =
+      voices.find(v => v.name === "Google US English") ||
+      voices.find(v => v.name.indexOf("Google") !== -1 && v.lang.indexOf("en") === 0) ||
+      voices.find(v => v.name === "Alex") ||
+      voices.find(v => v.name === "Samantha") ||
+      voices.find(v => v.lang === "en-US") ||
+      voices[0];
+    if (pick) utter.voice = pick;
+    utter.onend = () => { if (onDone) onDone(); };
+    utter.onerror = () => { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utter);
+  };
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = doSpeak;
+  } else {
+    doSpeak();
+  }
+};
+
+const stopSpeaking = () => { window.speechSynthesis.cancel(); };
+
 const s = {
   app: { display:"flex", flexDirection:"column", height:"100vh", fontFamily:"Georgia, serif", background:"#f8fafc", color:"#1e293b", margin:0 },
   header: { background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"12px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", flexShrink:0 },
@@ -288,14 +269,22 @@ const s = {
   startBtnDisabled: { width:"100%", background:"#f1f5f9", color:"#cbd5e1", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"not-allowed", marginTop:4 },
   backBtn: { background:"none", border:"none", color:"#94a3b8", fontSize:12, cursor:"pointer", marginTop:14, fontFamily:"Georgia, serif", display:"block", textAlign:"center", width:"100%" },
   diffGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
-  micBtn: (recording) => ({
-    width:52, height:52, borderRadius:"50%", border:"none", cursor:"pointer", fontSize:20, flexShrink:0,
-    background: recording ? "#dc2626" : "#6366f1",
-    boxShadow: recording ? "0 0 0 6px rgba(220,38,38,0.2)" : "0 0 0 3px rgba(99,102,241,0.2)",
-    transition:"all 0.2s", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff",
+  micBtn: (rec) => ({
+    width: 50, height: 50, borderRadius: "50%", border: "none", cursor: "pointer",
+    fontSize: 18, flexShrink: 0, color: "#fff",
+    background: rec ? "#dc2626" : "#4f46e5",
+    boxShadow: rec ? "0 0 0 5px rgba(220,38,38,0.25)" : "0 0 0 3px rgba(79,70,229,0.2)",
+    transition: "all 0.2s",
   }),
-  transcriptBox: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#1e293b", minHeight:52, lineHeight:1.6, fontFamily:"Georgia, serif" },
-  replayBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer", marginTop:8 },
+  transcriptBox: {
+    flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10,
+    padding: "10px 14px", fontSize: 13, color: "#1e293b", minHeight: 50, lineHeight: 1.6,
+    fontFamily: "Georgia, serif",
+  },
+  replayBtn: {
+    fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #e2e8f0",
+    background: "#fff", color: "#64748b", cursor: "pointer", marginTop: 8, display: "block",
+  },
   diffBtn: (active, color, bg, border) => ({
     padding:"10px 8px", borderRadius:10, fontSize:12, fontWeight: active ? 700 : 600,
     border: active ? `2px solid ${color}` : "2px solid #e2e8f0",
@@ -310,7 +299,7 @@ const callGemini = async (prompt, systemOverride = null) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      system: systemOverride || getFlowSystemPrompt("varsity"),
+      system: systemOverride || getFlowPrompt("varsity"),
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -345,11 +334,10 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [roundOver, setRoundOver] = useState(false);
 
-  // Voice / mic state
   const [speaking, setSpeaking] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [interimTranscript, setInterimTranscript] = useState("");
+  const [interim, setInterim] = useState("");
   const recognitionRef = useRef(null);
 
   // Case gen
@@ -364,6 +352,11 @@ export default function App() {
   const [caseFeedbackText, setCaseFeedbackText] = useState("");
 
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }, []);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, caseMsgs]);
 
   const addBotMessage = (content, type = "opponent") => {
@@ -375,21 +368,19 @@ export default function App() {
     try {
       if (useJudge) {
         const text = await callGemini(prompt, JUDGE_SYSTEM);
-        setMessages(prev => [...prev, { role:"assistant", content:text, flow:text, verbatim:text, type }]);
+        setMessages(prev => [...prev, { role:"assistant", content:text, verbatim:text, type }]);
         setSpeaking(true);
         speakText(text, () => setSpeaking(false));
       } else {
-        // Step 1: Generate flow first
-        const flow = await callGemini(prompt, getFlowSystemPrompt(difficulty));
-        // Step 2: Pass the flow to verbatim so it speaks the SAME arguments
-        const verbatimPrompt = "Here is the debate flow to expand into a spoken speech:\n\n" + flow + "\n\nNow deliver this as a full natural spoken speech. Same arguments, same order, no bullet points, no symbols, just natural spoken prose as a real debater would say it.";
-        const verbatim = await callGemini(verbatimPrompt, getVerbatimSystemPrompt(difficulty));
-        setMessages(prev => [...prev, { role:"assistant", content:flow, flow, verbatim, type }]);
+        const flow = await callGemini(prompt, getFlowPrompt(difficulty));
+        const vPrompt = "Expand this debate flow into a full spoken speech. Same arguments same order. Plain spoken English only, no symbols no labels no dashes no asterisks: " + flow;
+        const verbatim = await callGemini(vPrompt, getVerbatimPrompt(difficulty));
+        setMessages(prev => [...prev, { role:"assistant", content:flow, verbatim, type }]);
         setSpeaking(true);
         speakText(verbatim, () => setSpeaking(false));
       }
     } catch (e) {
-      setMessages(prev => [...prev, { role:"assistant", content:`Error: ${e.message} — please try again.`, flow:`Error: ${e.message}`, verbatim:"", type }]);
+      setMessages(prev => [...prev, { role:"assistant", content:"Error: " + e.message + " — please try again.", verbatim:"", type }]);
     }
     setLoading(false);
   };
@@ -437,12 +428,12 @@ export default function App() {
       setLoading(true);
       setAppMode("practice");
       try {
-        const fl = await callGemini(ROUND_PROMPTS.gov_opens(res), getFlowSystemPrompt(setupDifficulty));
-        const vbPrompt = "Here is the debate flow to expand into a spoken speech:\n\n" + fl + "\n\nNow deliver this as a full natural spoken speech. Same arguments, same order, no bullet points, no symbols, just natural spoken prose as a real debater would say it.";
-        const vb = await callGemini(vbPrompt, getVerbatimSystemPrompt(setupDifficulty));
-        setMessages([{ role:"assistant", content:fl, flow:fl, verbatim:vb, type:"opponent" }]);
+        const flow = await callGemini(ROUND_PROMPTS.gov_opens(res), getFlowPrompt(setupDifficulty));
+        const vp = "Expand this debate flow into a full spoken speech. Same arguments same order. Plain spoken English only, no symbols: " + flow;
+        const verbatim = await callGemini(vp, getVerbatimPrompt(setupDifficulty));
+        setMessages([{ role:"assistant", content:flow, verbatim, type:"opponent" }]);
         setSpeaking(true);
-        speakText(vb, () => setSpeaking(false));
+        speakText(verbatim, () => setSpeaking(false));
         setStage(2);
       } catch (e) {
         setMessages([{ role:"assistant", content:`Error: ${e.message} — please go back and try again.`, type:"opponent" }]);
@@ -473,70 +464,60 @@ export default function App() {
   // 6 = user whip
   // 7 = judge (loading) → done
 
-  // Load voices on mount
-  useEffect(() => {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-  }, []);
-
   const startRecording = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert("Speech recognition not supported. Please use Chrome."); return; }
+    if (!SR) { alert("Use Chrome for mic recording."); return; }
     stopSpeaking();
     setSpeaking(false);
-    const recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    let finalText = transcript;
-    recognition.onresult = (e) => {
-      let interim = "";
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = "en-US";
+    let final = transcript;
+    r.onresult = (e) => {
+      let inter = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { finalText += e.results[i][0].transcript + " "; }
-        else { interim = e.results[i][0].transcript; }
+        if (e.results[i].isFinal) { final += e.results[i][0].transcript + " "; }
+        else { inter = e.results[i][0].transcript; }
       }
-      setTranscript(finalText);
-      setInterimTranscript(interim);
+      setTranscript(final);
+      setInterim(inter);
     };
-    recognition.onend = () => { setRecording(false); setInterimTranscript(""); };
-    recognition.onerror = () => { setRecording(false); setInterimTranscript(""); };
-    recognitionRef.current = recognition;
-    recognition.start();
+    r.onend = () => { setRecording(false); setInterim(""); };
+    r.onerror = () => { setRecording(false); setInterim(""); };
+    recognitionRef.current = r;
+    r.start();
     setRecording(true);
   }, [transcript]);
 
   const stopRecording = useCallback(() => {
-    recognitionRef.current?.stop();
+    if (recognitionRef.current) recognitionRef.current.stop();
     setRecording(false);
-    setInterimTranscript("");
+    setInterim("");
   }, []);
 
   const handleUserSpeech = async () => {
-    const userText = (transcript.trim() || input.trim());
+    const userText = transcript.trim() || input.trim();
     if (!userText || loading || speaking) return;
     setInput("");
     setTranscript("");
-    setInterimTranscript("");
+    setInterim("");
     setMessages(prev => [...prev, { role:"user", content:userText, type:"user" }]);
 
     if (userSide === "Government") {
       if (stage === 0) {
-        // GOV constructive -> bot OPP constructive+rebuttal
         setStage(1);
         await botSpeak(ROUND_PROMPTS.opp_rebuts_and_constructs(resolution, userText));
         setStage(2);
       } else if (stage === 2) {
-        // GOV rebuttal+rebuild -> bot OPP rebuttal+rebuild
         setStage(3);
-        await botSpeak(ROUND_PROMPTS.opp_rebuts_gov_extended(resolution, userText));
+        await botSpeak(ROUND_PROMPTS.opp_rebuts_and_constructs(resolution, userText));
         setStage(4);
       } else if (stage === 4) {
-        // After OPP rebuild: bot delivers OPP whip
         setStage(5);
         await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Opposition", userText));
         setStage(6);
       } else if (stage === 6) {
-        // GOV whip (final) -> judge
         setStage(7);
         await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Government", "Opposition", userText, difficulty), "judge", true);
         setRoundOver(true);
@@ -544,18 +525,14 @@ export default function App() {
     } else {
       // User is OPP
       if (stage === 2) {
-        // OPP constructive+rebuttal -> bot GOV rebuttal+rebuild
         setStage(3);
         await botSpeak(ROUND_PROMPTS.gov_rebuts_and_extends(resolution, userText));
         setStage(4);
       } else if (stage === 4) {
-        // OPP rebuttal+rebuild -> user delivers OPP whip next (stage 6)
-        // But first nothing — user goes to stage 6 directly
-        setStage(6);
-      } else if (stage === 6) {
-        // OPP whip delivered -> bot GOV whip (final) -> judge
         setStage(5);
         await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Government", userText));
+        setStage(6);
+      } else if (stage === 6) {
         setStage(7);
         await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Opposition", "Government", userText, difficulty), "judge", true);
         setRoundOver(true);
@@ -566,14 +543,14 @@ export default function App() {
   const getInputLabel = () => {
     if (roundOver || loading) return null;
     if (userSide === "Government") {
-      if (stage === 0) return "YOUR SPEECH — Government Constructive";
-      if (stage === 2) return "YOUR SPEECH — Government Rebuttal + Rebuild";
-      if (stage === 4) return "YOUR SPEECH — Government Rebuttal + Rebuild (2nd)";
+      if (stage === 0) return "YOUR SPEECH — Government Opening Constructive";
+      if (stage === 2) return "YOUR SPEECH — Government Rebuttal";
+      if (stage === 4) return "YOUR SPEECH — Government Rebuttal (Pre-Whip)";
       if (stage === 6) return "YOUR SPEECH — Government Whip (Final)";
     } else {
-      if (stage === 2) return "YOUR SPEECH — Opposition Constructive + Rebuttal";
-      if (stage === 4) return "YOUR SPEECH — Opposition Rebuttal + Rebuild";
-      if (stage === 6) return "YOUR SPEECH — Opposition Whip";
+      if (stage === 2) return "YOUR SPEECH — Opposition Rebuttal + Constructive";
+      if (stage === 4) return "YOUR SPEECH — Opposition Rebuttal";
+      if (stage === 6) return "YOUR SPEECH — Opposition Whip (Final)";
     }
     return null;
   };
@@ -598,12 +575,12 @@ export default function App() {
       ];
     }
     return [
-      { label:"Gov Constructive", active: stage === 1, done: stage > 1 },
-      { label:"Opp Constructive+Rebuttal", active: stage === 2, done: stage > 2 },
-      { label:"Gov Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
-      { label:"Opp Rebuttal+Rebuild", active: stage === 4, done: stage > 4 },
-      { label:"Opp Whip", active: stage === 6, done: stage > 6 },
-      { label:"Gov Whip", active: stage === 7, done: roundOver },
+      { label:"Gov Opens", active: stage === 1, done: stage > 1 },
+      { label:"You Rebut", active: stage === 2, done: stage > 2 },
+      { label:"Gov Extends", active: stage === 3, done: stage > 3 },
+      { label:"You Rebut", active: stage === 4, done: stage > 4 },
+      { label:"Gov Whip", active: stage === 5, done: stage > 5 },
+      { label:"Your Whip", active: stage === 6, done: stage > 6 },
       { label:"Judge", active: stage === 7, done: roundOver },
     ];
   };
@@ -611,11 +588,11 @@ export default function App() {
   const resetToLanding = () => {
     setAppMode("landing");
     stopSpeaking();
-    recognitionRef.current?.stop();
+    if (recognitionRef.current) recognitionRef.current.stop();
     setSpeaking(false);
     setRecording(false);
     setTranscript("");
-    setInterimTranscript("");
+    setInterim("");
     setSetupSide(null);
     setSetupResMode(null);
     setSetupResText("");
@@ -843,10 +820,7 @@ export default function App() {
               ))}
             </div>
             {speaking && (
-              <div>
-                <p style={s.sideLabel}>Audio</p>
-                <button style={s.actionBtn} onClick={() => { stopSpeaking(); setSpeaking(false); }}>⏹ Stop Speaking</button>
-              </div>
+              <button style={s.actionBtn} onClick={() => { stopSpeaking(); setSpeaking(false); }}>⏹ Stop speaking</button>
             )}
             {roundOver && (
               <button style={{ ...s.actionBtn, background:"#4f46e5", color:"#fff", border:"none", fontWeight:700, cursor:"pointer" }} onClick={() => setAppMode("setup")}>🔄 New Round</button>
@@ -876,9 +850,7 @@ export default function App() {
                     {msg.role === "user" && <div style={{ ...s.msgTag, color:"rgba(255,255,255,0.6)" }}>🎤 {userSide}</div>}
                     {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                     {msg.role === "assistant" && msg.verbatim && (
-                      <button style={s.replayBtn} onClick={() => { stopSpeaking(); setSpeaking(true); speakText(msg.verbatim, () => setSpeaking(false)); }}>
-                        🔊 Replay speech
-                      </button>
+                      <button style={s.replayBtn} onClick={() => { stopSpeaking(); setSpeaking(true); speakText(msg.verbatim, () => setSpeaking(false)); }}>🔊 Replay speech</button>
                     )}
                   </div>
                 </div>
@@ -888,7 +860,7 @@ export default function App() {
                 <div style={s.msgWrapAsst}>
                   <div style={s.msgAsstOpponent}>
                     <div style={{ ...s.msgTag, color:"#be123c" }}>⚔ {botSide}</div>
-                    <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Preparing speech</span>
+                    <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Speaking</span>
                     <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                   </div>
                 </div>
@@ -900,42 +872,36 @@ export default function App() {
               {label && <div style={s.speechLabel}>🎤 {label}</div>}
               {speaking && <div style={{ fontSize:11, color:"#7c3aed", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>🔊 Opponent speaking — hit mic to interrupt</div>}
               {!userTurn && !loading && !speaking && !roundOver && <div style={{ fontSize:11, color:"#94a3b8", marginBottom:6, fontFamily:"monospace" }}>Opponent is preparing...</div>}
-              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>✓ Round complete — see judge's decision above</div>}
+              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>✓ Round complete — see judge decision above</div>}
               <div style={s.inputRow}>
                 <button
                   style={s.micBtn(recording)}
                   onClick={recording ? stopRecording : startRecording}
                   disabled={!userTurn && !recording}
-                  title={recording ? "Stop recording" : "Start recording"}
-                >
-                  {recording ? "⏹" : "🎤"}
-                </button>
+                  title={recording ? "Stop" : "Record"}
+                >{recording ? "⏹" : "🎤"}</button>
                 <div style={s.transcriptBox}>
-                  {transcript || interimTranscript
-                    ? <span>{transcript}<span style={{ color:"#94a3b8" }}>{interimTranscript}</span></span>
-                    : <span style={{ color:"#cbd5e1" }}>
-                        {roundOver ? "Round is over." : !userTurn ? "Wait for opponent..." : "Hit mic and speak, or type below..."}
-                      </span>
+                  {(transcript || interim)
+                    ? <span>{transcript}<span style={{ color:"#94a3b8" }}>{interim}</span></span>
+                    : <span style={{ color:"#cbd5e1" }}>{roundOver ? "Round over." : !userTurn ? "Waiting..." : "Hit mic and speak, or type below..."}</span>
                   }
                 </div>
                 <button
-                  style={!(transcript.trim()||input.trim())||!userTurn||speaking ? s.sendBtnDisabled : s.sendBtnRed}
+                  style={!(transcript.trim() || input.trim()) || !userTurn || speaking ? s.sendBtnDisabled : s.sendBtnRed}
                   onClick={handleUserSpeech}
-                  disabled={!(transcript.trim()||input.trim())||!userTurn||speaking}
+                  disabled={!(transcript.trim() || input.trim()) || !userTurn || speaking}
                 >Deliver</button>
               </div>
-              <div style={s.inputRow} style={{ marginTop:6 }}>
-                <textarea
-                  style={{ ...s.inputTextarea, fontSize:12 }}
-                  rows={2}
-                  placeholder="Or type your speech here..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={!userTurn || speaking}
-                  onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); if ((input.trim()||transcript.trim())&&userTurn) handleUserSpeech(); }}}
-                />
-              </div>
-              <div style={s.inputHint}>🎤 Mic to record · Type to write · Deliver when done · Chrome recommended</div>
+              <textarea
+                style={{ ...s.inputTextarea, marginTop:8, fontSize:12 }}
+                rows={2}
+                placeholder="Or type your speech here..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={!userTurn || speaking}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if ((input.trim() || transcript.trim()) && userTurn) handleUserSpeech(); }}}
+              />
+              <div style={s.inputHint}>🎤 Mic to record · Type below · Deliver when ready · Chrome only for mic</div>
             </div>
           </main>
         </div>
