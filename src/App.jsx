@@ -72,17 +72,16 @@ const getFlowSystemPrompt = (difficulty = "varsity") => {
 
 const getVerbatimSystemPrompt = (difficulty = "varsity") => {
   const d = DIFFICULTY[difficulty];
-  return "You are converting a debate flow into a spoken speech. " + d.botInstructions + "\n\n" +
-    "THE SINGLE MOST IMPORTANT RULE: Your output will be fed directly into text-to-speech. " +
-    "If you write any of these characters they will be spoken aloud literally and it will sound terrible: " +
-    "* (asterisk), - (dash), — (em dash), • (bullet), # (hash), _ (underscore), -> (arrow), C1 C2 C3, Claim: Warrant: Impact: " +
-    "DO NOT USE ANY OF THOSE CHARACTERS OR LABELS. NOT EVEN ONCE. " +
-    "Output ONLY plain English sentences with no formatting whatsoever. No lists. No structure. No symbols. " +
-    "Just write exactly what a debater would say out loud. " +
-    "Expand every argument from the flow into full natural sentences in the same order. " +
-    "Speak like a confident high school debater: fast, direct, persuasive. " +
-    "Use natural spoken transitions: 'My first contention is', 'Now look at their case', 'They dropped', 'The reason this matters', 'At the end of the day'. " +
-    "No bullet points. No dashes. No asterisks. No labels. Plain spoken English only.";
+  return "You are a debater delivering a speech out loud. " + d.botInstructions + "\n\n" +
+    "You will receive a flow sheet. Expand it into a SPOKEN SPEECH. " +
+    "ABSOLUTE RULES: " +
+    "1. Zero asterisks. Zero dashes. Zero bullets. Zero symbols of any kind. " +
+    "2. Zero labels like C1, C2, Claim, Warrant, Impact, Sub. " +
+    "3. Only write words that a human would actually say aloud. " +
+    "4. If you use any symbol or label your output is completely wrong. " +
+    "Write like this: My first contention is that economic growth follows from deregulation. When governments remove barriers to business, capital flows freely, and jobs are created. This matters because prosperity lifts all citizens, not just those at the top. " +
+    "Never write like this: C1: Economy. Claim: deregulation helps. Warrant: capital flows. Impact: jobs. " +
+    "Sound like a real debater going up at a tournament. Fast, confident, persuasive. Build to your impacts. Call out what they dropped. Natural spoken English only.";
 };
 
 const parseResponse = (text) => {
@@ -95,35 +94,45 @@ const parseResponse = (text) => {
 };
 
 const cleanForSpeech = (text) => {
-  const badWords = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:"];
+  const killWords = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:", "C5:", "->", "→", "--"];
   let t = text;
-  badWords.forEach(w => { t = t.split(w).join(""); });
-  const badChars = ["*", "-", "—", "–", "•", "→", "#", "_", "`", "[", "]"];
-  t = t.split("").map(c => badChars.includes(c) ? " " : c).join("");
+  killWords.forEach(w => { t = t.split(w).join(""); });
+  const killChars = ["*", "_", "#", "`", "[", "]", "•", "—", "–", "~"];
+  t = t.split("").map(c => (killChars.indexOf(c) !== -1 ? " " : c)).join("");
   t = t.split(String.fromCharCode(10)).join(" ");
-  while (t.includes("  ")) { t = t.split("  ").join(" "); }
+  t = t.split(String.fromCharCode(13)).join(" ");
+  t = t.split(String.fromCharCode(9)).join(" ");
+  while (t.indexOf("  ") !== -1) { t = t.split("  ").join(" "); }
   return t.trim();
 };
 
 const speakText = (text, onDone) => {
   window.speechSynthesis.cancel();
-  const cleanText = cleanForSpeech(text);
+  const clean = cleanForSpeech(text);
   const doSpeak = () => {
-    const utter = new SpeechSynthesisUtterance(cleanText);
+    const utter = new SpeechSynthesisUtterance(clean);
     utter.rate = 1.2;
     utter.pitch = 1.0;
     utter.volume = 1.0;
     const voices = window.speechSynthesis.getVoices();
-    const preferred =
+    const pick =
       voices.find(v => v.name === "Google US English") ||
-      voices.find(v => v.name === "Google UK English Male") ||
-      voices.find(v => v.name.startsWith("Google") && v.lang.startsWith("en")) ||
+      voices.find(v => v.name.indexOf("Google") !== -1 && v.lang.indexOf("en") === 0) ||
       voices.find(v => v.name === "Alex") ||
       voices.find(v => v.name === "Samantha") ||
       voices.find(v => v.lang === "en-US") ||
       voices[0];
-    if (preferred) utter.voice = preferred;
+    if (pick) utter.voice = pick;
     utter.onend = () => { if (onDone) onDone(); };
+    utter.onerror = () => { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utter);
+  };
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = doSpeak;
+  } else {
+    doSpeak();
+  }
+};
     utter.onerror = () => { if (onDone) onDone(); };
     window.speechSynthesis.speak(utter);
   };
