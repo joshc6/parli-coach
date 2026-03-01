@@ -689,6 +689,16 @@ export default function App() {
               })}
             </div>
             {speaking && <button style={s.actionBtn} onClick={function() { doStopSpeaking(); setSpeaking(false); }}>{"⏹ Stop Speaking"}</button>}
+            <button style={s.actionBtn} onClick={function() {
+              const voices = window.speechSynthesis.getVoices();
+              const msg = "Voices loaded: " + voices.length + ". Voice: " + (voiceRef.current ? voiceRef.current.name : "none");
+              alert(msg);
+              const u = new SpeechSynthesisUtterance("Testing one two three. Can you hear me?");
+              u.rate = 1.2;
+              if (voiceRef.current) u.voice = voiceRef.current;
+              window.speechSynthesis.cancel();
+              window.speechSynthesis.speak(u);
+            }}>{"🔊 Test Audio"}</button>
             {roundOver && <button style={Object.assign({}, s.actionBtn, { background:"#4f46e5", color:"#fff", border:"none", fontWeight:700 })} onClick={function() { setAppMode("setup"); }}>{"🔄 New Round"}</button>}
             <button style={s.actionBtn} onClick={resetToLanding}>{"← Home"}</button>
           </aside>
