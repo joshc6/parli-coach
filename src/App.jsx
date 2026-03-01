@@ -329,15 +329,11 @@ export default function App() {
       if (judge) {
         const text = await callAPI(prompt, JUDGE_SYSTEM);
         setMessages(function(prev) { return prev.concat([{ role: "assistant", content: text, verbatim: text, type: type }]); });
-        setSpeaking(true);
-        doSpeakText(text, function() { setSpeaking(false); }, voiceRef.current);
       } else {
         const flow = await callAPI(prompt, getFlowPrompt(difficulty));
         const vp = "Here is a debate flow sheet. Expand every point into natural spoken sentences in the same order. Write only plain spoken English words, no symbols no labels no asterisks no dashes no bullets: " + flow;
         const verbatim = await callAPI(vp, getVerbatimPrompt(difficulty));
         setMessages(function(prev) { return prev.concat([{ role: "assistant", content: flow, verbatim: verbatim, type: type }]); });
-        setSpeaking(true);
-        doSpeakText(verbatim, function() { setSpeaking(false); }, voiceRef.current);
       }
     } catch (e) {
       setMessages(function(prev) { return prev.concat([{ role: "assistant", content: "Error: " + e.message, verbatim: "", type: type }]); });
@@ -388,8 +384,6 @@ export default function App() {
         const vp = "Here is a debate flow sheet. Expand every point into natural spoken sentences in the same order. Write only plain spoken English, no symbols no labels no asterisks no dashes no bullets: " + flow;
         const verbatim = await callAPI(vp, getVerbatimPrompt(setupDifficulty));
         setMessages([{ role: "assistant", content: flow, verbatim: verbatim, type: "opponent" }]);
-        setSpeaking(true);
-        doSpeakText(verbatim, function() { setSpeaking(false); }, voiceRef.current);
         setStage(2);
       } catch (e) {
         setMessages([{ role: "assistant", content: "Error: " + e.message, verbatim: "", type: "opponent" }]);
@@ -692,16 +686,7 @@ export default function App() {
               })}
             </div>
             {speaking && <button style={s.actionBtn} onClick={function() { doStopSpeaking(); setSpeaking(false); }}>{"⏹ Stop Speaking"}</button>}
-            <button style={s.actionBtn} onClick={function() {
-              const voices = window.speechSynthesis.getVoices();
-              const msg = "Voices loaded: " + voices.length + ". Voice: " + (voiceRef.current ? voiceRef.current.name : "none");
-              alert(msg);
-              const u = new SpeechSynthesisUtterance("Testing one two three. Can you hear me?");
-              u.rate = 1.2;
-              if (voiceRef.current) u.voice = voiceRef.current;
-              window.speechSynthesis.cancel();
-              window.speechSynthesis.speak(u);
-            }}>{"🔊 Test Audio"}</button>
+
             {roundOver && <button style={Object.assign({}, s.actionBtn, { background:"#4f46e5", color:"#fff", border:"none", fontWeight:700 })} onClick={function() { setAppMode("setup"); }}>{"🔄 New Round"}</button>}
             <button style={s.actionBtn} onClick={resetToLanding}>{"← Home"}</button>
           </aside>
@@ -723,7 +708,7 @@ export default function App() {
                       {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{"🎤 " + userSide}</div>}
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
-                        <button style={s.replayBtn} onClick={function() {
+                        <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
                           window.speechSynthesis.cancel();
                           const clean = cleanForSpeech(msg.verbatim);
                           const u = new SpeechSynthesisUtterance(clean);
@@ -731,8 +716,10 @@ export default function App() {
                           u.pitch = 1.0;
                           u.volume = 1.0;
                           if (voiceRef.current) u.voice = voiceRef.current;
+                          u.onstart = function() { console.log("TTS started"); };
+                          u.onerror = function(e) { console.log("TTS error", e); };
                           window.speechSynthesis.speak(u);
-                        }}>{"🔊 Replay speech"}</button>
+                        }}>{"▶ Play Speech"}</button>
                       )}
                     </div>
                   </div>
