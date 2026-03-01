@@ -189,25 +189,22 @@ function pickVoice() {
   return voices.length > 0 ? voices[0] : null;
 }
 
-function doSpeakText(text, onDone) {
+function doSpeakText(text, onDone, voice) {
   window.speechSynthesis.cancel();
   const clean = cleanForSpeech(text);
-  const attempt = function() {
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.rate = 1.2;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.rate = 1.2;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+  if (voice) {
+    utter.voice = voice;
+  } else {
     const v = pickVoice();
     if (v) utter.voice = v;
-    utter.onend = function() { if (onDone) onDone(); };
-    utter.onerror = function() { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utter);
-  };
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = attempt;
-  } else {
-    attempt();
   }
+  utter.onend = function() { if (onDone) onDone(); };
+  utter.onerror = function() { if (onDone) onDone(); };
+  window.speechSynthesis.speak(utter);
 }
 
 function doStopSpeaking() {
@@ -265,9 +262,28 @@ export default function App() {
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [messages, caseMsgs]);
 
+  const voiceRef = useRef(null);
+
   useEffect(function() {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = function() { window.speechSynthesis.getVoices(); };
+    function loadVoice() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) return;
+      for (let i = 0; i < voices.length; i++) {
+        if (voices[i].name === "Google US English") { voiceRef.current = voices[i]; return; }
+      }
+      for (let i = 0; i < voices.length; i++) {
+        if (voices[i].name.indexOf("Google") !== -1 && voices[i].lang.indexOf("en") === 0) { voiceRef.current = voices[i]; return; }
+      }
+      for (let i = 0; i < voices.length; i++) {
+        if (voices[i].name === "Alex" || voices[i].name === "Samantha") { voiceRef.current = voices[i]; return; }
+      }
+      for (let i = 0; i < voices.length; i++) {
+        if (voices[i].lang === "en-US") { voiceRef.current = voices[i]; return; }
+      }
+      if (voices.length > 0) voiceRef.current = voices[0];
+    }
+    window.speechSynthesis.onvoiceschanged = loadVoice;
+    loadVoice();
   }, []);
 
   const startRecording = function() {
@@ -311,14 +327,14 @@ export default function App() {
         const text = await callAPI(prompt, JUDGE_SYSTEM);
         setMessages(function(prev) { return prev.concat([{ role: "assistant", content: text, verbatim: text, type: type }]); });
         setSpeaking(true);
-        doSpeakText(text, function() { setSpeaking(false); });
+        doSpeakText(text, function() { setSpeaking(false); }, voiceRef.current);
       } else {
         const flow = await callAPI(prompt, getFlowPrompt(difficulty));
         const vp = "Here is a debate flow sheet. Expand every point into natural spoken sentences in the same order. Write only plain spoken English words, no symbols no labels no asterisks no dashes no bullets: " + flow;
         const verbatim = await callAPI(vp, getVerbatimPrompt(difficulty));
         setMessages(function(prev) { return prev.concat([{ role: "assistant", content: flow, verbatim: verbatim, type: type }]); });
         setSpeaking(true);
-        doSpeakText(verbatim, function() { setSpeaking(false); });
+        doSpeakText(verbatim, function() { setSpeaking(false); }, voiceRef.current);
       }
     } catch (e) {
       setMessages(function(prev) { return prev.concat([{ role: "assistant", content: "Error: " + e.message, verbatim: "", type: type }]); });
@@ -370,7 +386,7 @@ export default function App() {
         const verbatim = await callAPI(vp, getVerbatimPrompt(setupDifficulty));
         setMessages([{ role: "assistant", content: flow, verbatim: verbatim, type: "opponent" }]);
         setSpeaking(true);
-        doSpeakText(verbatim, function() { setSpeaking(false); });
+        doSpeakText(verbatim, function() { setSpeaking(false); }, voiceRef.current);
         setStage(2);
       } catch (e) {
         setMessages([{ role: "assistant", content: "Error: " + e.message, verbatim: "", type: "opponent" }]);
@@ -694,7 +710,7 @@ export default function App() {
                       {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{"🎤 " + userSide}</div>}
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
-                        <button style={s.replayBtn} onClick={function() { doStopSpeaking(); setSpeaking(true); doSpeakText(msg.verbatim, function() { setSpeaking(false); }); }}>{"🔊 Replay speech"}</button>
+                        <button style={s.replayBtn} onClick={function() { doStopSpeaking(); setSpeaking(true); doSpeakText(msg.verbatim, function() { setSpeaking(false); }, voiceRef.current); }}>{"🔊 Replay speech"}</button>
                       )}
                     </div>
                   </div>
