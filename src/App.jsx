@@ -723,7 +723,16 @@ export default function App() {
                       {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{"🎤 " + userSide}</div>}
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
-                        <button style={s.replayBtn} onClick={function() { doStopSpeaking(); setSpeaking(true); doSpeakText(msg.verbatim, function() { setSpeaking(false); }, voiceRef.current); }}>{"🔊 Replay speech"}</button>
+                        <button style={s.replayBtn} onClick={function() {
+                          window.speechSynthesis.cancel();
+                          const clean = cleanForSpeech(msg.verbatim);
+                          const u = new SpeechSynthesisUtterance(clean);
+                          u.rate = 1.2;
+                          u.pitch = 1.0;
+                          u.volume = 1.0;
+                          if (voiceRef.current) u.voice = voiceRef.current;
+                          window.speechSynthesis.speak(u);
+                        }}>{"🔊 Replay speech"}</button>
                       )}
                     </div>
                   </div>
