@@ -192,19 +192,22 @@ function pickVoice() {
 function doSpeakText(text, onDone, voice) {
   window.speechSynthesis.cancel();
   const clean = cleanForSpeech(text);
-  const utter = new SpeechSynthesisUtterance(clean);
-  utter.rate = 1.2;
-  utter.pitch = 1.0;
-  utter.volume = 1.0;
-  if (voice) {
-    utter.voice = voice;
-  } else {
-    const v = pickVoice();
-    if (v) utter.voice = v;
-  }
-  utter.onend = function() { if (onDone) onDone(); };
-  utter.onerror = function() { if (onDone) onDone(); };
-  window.speechSynthesis.speak(utter);
+  setTimeout(function() {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.rate = 1.2;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    if (voice) {
+      utter.voice = voice;
+    } else {
+      const v = pickVoice();
+      if (v) utter.voice = v;
+    }
+    utter.onend = function() { if (onDone) onDone(); };
+    utter.onerror = function() { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utter);
+  }, 400);
 }
 
 function doStopSpeaking() {
