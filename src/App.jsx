@@ -1,228 +1,61 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-
-// ── DIFFICULTY CONFIGS ───────────────────────────────────────────────────────
+import { useState, useRef, useEffect } from "react";
 
 const DIFFICULTY = {
   novice: {
-    label: "Novice",
-    color: "#16a34a",
-    bg: "#dcfce7",
-    border: "#bbf7d0",
+    label: "Novice", color: "#16a34a", bg: "#dcfce7", border: "#bbf7d0",
     description: "Simple args, forgiving",
-    botInstructions: `DIFFICULTY: NOVICE
-- Make simple, straightforward arguments. One clear warrant per contention.
-- Do NOT call out drops aggressively. Ignore minor gaps.
-- Use basic impacts. Do not stack layers.
-- Rebuttals should be short and simple, one response per contention.
-- Do not run multi-layered arguments.
-- Be a beginner-level opponent.`,
+    botInstructions: "DIFFICULTY: NOVICE. Make simple, straightforward arguments with one clear warrant per contention. Do NOT call out drops aggressively. Use basic impacts. Rebuttals should be short and simple. Be a beginner-level opponent.",
   },
   jv: {
-    label: "JV",
-    color: "#d97706",
-    bg: "#fef3c7",
-    border: "#fde68a",
+    label: "JV", color: "#d97706", bg: "#fef3c7", border: "#fde68a",
     description: "Moderate pressure",
-    botInstructions: `DIFFICULTY: JV
-- Make decent arguments with clear warrants and moderate impacts.
-- Occasionally call out drops, but don't harp on them.
-- Run 2 contentions max. Don't over-layer.
-- Rebuttals cover the main args but may miss secondary points.
-- Be a solid but beatable opponent.`,
+    botInstructions: "DIFFICULTY: JV. Make decent arguments with clear warrants and moderate impacts. Occasionally call out drops. Run 2 contentions max. Rebuttals cover main args. Be a solid but beatable opponent.",
   },
   varsity: {
-    label: "Varsity",
-    color: "#7c3aed",
-    bg: "#ede9fe",
-    border: "#ddd6fe",
+    label: "Varsity", color: "#7c3aed", bg: "#ede9fe", border: "#ddd6fe",
     description: "Strong & technical",
-    botInstructions: `DIFFICULTY: VARSITY
-- Make strong, well-developed arguments with layered warrants and real impacts.
-- Aggressively call out drops. Name them explicitly.
-- Run 2-3 contentions with sub-arguments.
-- Rebuttals go contention by contention and include extensions.
-- Whip speech weighs multiple voters and compares worlds.
-- Be a genuinely tough opponent.`,
+    botInstructions: "DIFFICULTY: VARSITY. Make strong well-developed arguments with layered warrants and real impacts. Aggressively call out drops by name. Run 2-3 contentions with sub-arguments. Rebuttals go contention by contention. Whip speech weighs multiple voters. Be a genuinely tough opponent.",
   },
   toc: {
-    label: "TOC",
-    color: "#dc2626",
-    bg: "#fee2e2",
-    border: "#fecaca",
+    label: "TOC", color: "#dc2626", bg: "#fee2e2", border: "#fecaca",
     description: "Elite level, brutal",
-    botInstructions: `DIFFICULTY: TOC (Tournament of Champions)
-- Run the most technically sophisticated arguments possible.
-- Call out EVERY drop, even small ones. Name dropped arguments explicitly by label.
-- Multi-layer every contention: Claim, Warrant, Internal Link, Impact, Magnitude/Timeframe/Probability.
-- Rebuttals are exhaustive — respond to every sub-argument, not just main contentions.
-- Run counter-definitions if useful. Challenge framing aggressively.
-- Whip speech does full comparative weighing on every voter: magnitude, timeframe, probability.
-- Extensions are airtight and pre-empt the user's likely responses.
-- Be an elite, nearly unbeatable opponent.`,
+    botInstructions: "DIFFICULTY: TOC. Run the most technically sophisticated arguments possible. Call out EVERY drop by label. Multi-layer every contention: Claim, Warrant, Internal Link, Impact, Magnitude, Timeframe, Probability. Rebuttals are exhaustive. Whip does full comparative weighing on every voter. Be an elite nearly unbeatable opponent.",
   },
 };
 
-const getFlowSystemPrompt = (difficulty = "varsity") => {
+const getFlowPrompt = function(difficulty) {
   const d = DIFFICULTY[difficulty];
-  return "You are a parliamentary debate opponent. " + d.botInstructions + "\n\n" +
-    "Output ONLY a debate flow sheet. Short bullet points, 5-12 words max. " +
-    "Contentions: C1:, C2:, C3: with Claim:, Warrant:, Impact: under each. " +
-    "Rebuttals: -> [their arg]: [your response]. No full sentences. No prose. No explanations.";
+  return "You are an expert high school parliamentary debate opponent. " + d.botInstructions + " Output a DEBATE FLOW. Short punchy bullets, 5-12 words max per bullet. Label contentions C1 C2 C3 with Claim Warrant Impact under each. For rebuttals use arrow notation. No full sentences. No prose.";
 };
 
-const getVerbatimSystemPrompt = (difficulty = "varsity") => {
+const getVerbatimPrompt = function(difficulty) {
   const d = DIFFICULTY[difficulty];
-  return "You are a debater delivering a speech out loud. " + d.botInstructions + "\n\n" +
-    "You will receive a flow sheet. Expand it into a SPOKEN SPEECH. " +
-    "ABSOLUTE RULES: " +
-    "1. Zero asterisks. Zero dashes. Zero bullets. Zero symbols of any kind. " +
-    "2. Zero labels like C1, C2, Claim, Warrant, Impact, Sub. " +
-    "3. Only write words that a human would actually say aloud. " +
-    "4. If you use any symbol or label your output is completely wrong. " +
-    "Write like this: My first contention is that economic growth follows from deregulation. When governments remove barriers to business, capital flows freely, and jobs are created. This matters because prosperity lifts all citizens, not just those at the top. " +
-    "Never write like this: C1: Economy. Claim: deregulation helps. Warrant: capital flows. Impact: jobs. " +
-    "Sound like a real debater going up at a tournament. Fast, confident, persuasive. Build to your impacts. Call out what they dropped. Natural spoken English only.";
+  return "You are a high school parliamentary debater delivering a speech out loud. " + d.botInstructions + " You will be given a flow sheet. Expand every point into natural spoken sentences in the SAME ORDER. You must follow these rules without exception: Do not write any asterisks. Do not write any dashes. Do not write any bullet points. Do not write labels like C1 C2 Claim Warrant Impact. Do not use any symbols whatsoever. Write ONLY plain spoken English words that a real debater would actually say out loud. Sound like a confident debater at a tournament: fast, direct, persuasive. Use spoken transitions like My first contention is, Moving to my next point, Look at what they dropped, The reason this matters. Build to your impacts. Natural speech only.";
 };
 
-const parseResponse = (text) => {
-  const verbatimMatch = text.match(/\[VERBATIM\]([\s\S]*?)\[\/VERBATIM\]/);
-  const flowMatch = text.match(/\[FLOW\]([\s\S]*?)\[\/FLOW\]/);
-  return {
-    verbatim: verbatimMatch ? verbatimMatch[1].trim() : text,
-    flow: flowMatch ? flowMatch[1].trim() : text,
-  };
-};
+const JUDGE_SYSTEM = "You are an impartial parliamentary debate judge. Judge purely on argument quality, dropped arguments, weighing, and clash. Do not favor either side. If the user lost say so clearly. If the AI lost say so clearly. A dropped argument is a conceded argument. Be specific, honest, and direct. Write in full prose.";
 
-const cleanForSpeech = (text) => {
-  const killWords = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:", "C5:", "->", "→", "--"];
-  let t = text;
-  killWords.forEach(w => { t = t.split(w).join(""); });
-  const killChars = ["*", "_", "#", "`", "[", "]", "•", "—", "–", "~"];
-  t = t.split("").map(c => (killChars.indexOf(c) !== -1 ? " " : c)).join("");
-  t = t.split(String.fromCharCode(10)).join(" ");
-  t = t.split(String.fromCharCode(13)).join(" ");
-  t = t.split(String.fromCharCode(9)).join(" ");
-  while (t.indexOf("  ") !== -1) { t = t.split("  ").join(" "); }
-  return t.trim();
-};
-
-const speakText = (text, onDone) => {
-  window.speechSynthesis.cancel();
-  const clean = cleanForSpeech(text);
-  const doSpeak = () => {
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.rate = 1.2;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
-    const voices = window.speechSynthesis.getVoices();
-    const pick =
-      voices.find(v => v.name === "Google US English") ||
-      voices.find(v => v.name.indexOf("Google") !== -1 && v.lang.indexOf("en") === 0) ||
-      voices.find(v => v.name === "Alex") ||
-      voices.find(v => v.name === "Samantha") ||
-      voices.find(v => v.lang === "en-US") ||
-      voices[0];
-    if (pick) utter.voice = pick;
-    utter.onend = () => { if (onDone) onDone(); };
-    utter.onerror = () => { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utter);
-  };
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = doSpeak;
-  } else {
-    doSpeak();
-  }
-};
-    utter.onerror = () => { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utter);
-  };
-  if (window.speechSynthesis.getVoices().length === 0) {
-    window.speechSynthesis.onvoiceschanged = doSpeak;
-  } else {
-    doSpeak();
-  }
-};
-
-const stopSpeaking = () => window.speechSynthesis.cancel();
-
-const JUDGE_SYSTEM = `You are an impartial parliamentary debate judge. Your only job is to evaluate who won based on the arguments made.
-
-CRITICAL JUDGING RULES:
-- You are NOT rooting for the human user. You are NOT rooting for the AI opponent.
-- Judge purely on: argument quality, dropped arguments, weighing, and clash.
-- If the user lost, say so clearly and explain why. Do not soften it.
-- If the AI opponent lost, say so clearly.
-- A dropped argument is a conceded argument. Treat it that way.
-- Whoever did better comparative weighing in the whip wins close calls.
-- Be specific. Name the exact arguments that were decisive.
-- Write in full prose. Be direct, honest, and impartial.`;
-
-// Round flow:
-// GOV user: user opens -> bot (OPP) rebuts+constructs -> user rebuts -> bot whip -> user whip -> judge
-// OPP user: bot (GOV) opens -> user rebuts+constructs -> bot rebuts+extends -> user rebuts -> bot whip -> user whip -> judge
+const SYSTEM_PROMPT = "You are an expert high school parliamentary debate coach. Help the user build debate cases, arguments, and speeches. Use clear structure with contentions, claims, warrants, and impacts.";
 
 const ROUND_PROMPTS = {
-  gov_opens: (res) => `Resolution: "${res}"
-You are Government. Output your opening constructive case in FLOW FORMAT.
-Label it: "— GOVERNMENT CONSTRUCTIVE —"
-Include: brief definitions, C1, C2, and C3 if strong. Each contention: Claim, Warrant, Impact. Keep bullets short.
-End with one line: "Your turn — OPP constructive + rebut my case."`,
-
-  opp_rebuts_and_constructs: (res, userSpeech) => `Resolution: "${res}"
-You are Opposition. The Government just said:
-"${userSpeech}"
-
-Output in FLOW FORMAT:
-1. Label "— OPPOSITION REBUTTAL —" — go through each of their contentions with responses
-2. Label "— OPPOSITION CONSTRUCTIVE —" — C1, C2, (C3 if strong). Each: Claim, Warrant, Impact.
-Keep all bullets short. No prose.
-End with one line: "Your turn — rebut my case and defend yours."`,
-
-  gov_rebuts_and_extends: (res, userSpeech) => `Resolution: "${res}"
-You are Government. The Opposition just said:
-"${userSpeech}"
-
-Output in FLOW FORMAT:
-1. Label "— GOVERNMENT REBUTTAL —" — responses to each OPP contention, call out drops
-2. Label "— GOVERNMENT EXTENSION —" — re-extend your own contentions, show they still stand
-Keep all bullets short. No prose.
-End with one line: "Your turn — defend your case, attack my extensions. Then whip speeches."`,
-
-  opp_rebuts_gov_extended: (res, userSpeech) => `Resolution: "${res}"
-You are Opposition. Government just extended:
-"${userSpeech}"
-
-Output in FLOW FORMAT:
-Label "— OPPOSITION REBUTTAL —" — responses to their extensions, reinforce your own contentions
-Keep all bullets short. No prose.
-End with one line: "Your turn — rebut and defend. Then whip speeches."`,
-
-  bot_whip: (res, botSide, userSpeech) => `Resolution: "${res}"
-You are ${botSide}. User just said:
-"${userSpeech}"
-
-Output in FLOW FORMAT:
-Label "— ${botSide.toUpperCase()} WHIP —"
-- List 2-3 voters as bullets
-- Under each voter: why YOU win it (1-2 bullets)
-- Final bullet: your world vs their world — why judge votes ${botSide}
-NO new arguments. Keep bullets short.
-End with one line: "Your turn — final whip speech."`,
-
-  judge_critique: (res, userSide, botSide, userWhip, difficulty) => {
-    const diffLabel = DIFFICULTY[difficulty]?.label || "Varsity";
-    return `Resolution: "${res}"
-Difficulty: ${diffLabel}. Human debated as ${userSide}. AI opponent debated as ${botSide}.
-Human's final whip: "${userWhip}"
-
-You are an impartial judge. Evaluate this round fairly — do not favor either side.
-Label: "— JUDGE'S DECISION —"
-
-1. DECISION: Who won — ${userSide} or ${botSide} — and the core reason in 1-2 sentences.
-2. DECISIVE ARGUMENTS: The 2-3 arguments that decided the round. Be specific.
-3. WHAT THE HUMAN DID WELL: Genuine praise only. Do not inflate.
-4. WHAT THE HUMAN DROPPED OR LOST: Be direct. Name specific arguments.
-5. WHAT TO IMPROVE: Specific, actionable coaching.`;
+  gov_opens: function(res) {
+    return "Resolution: " + res + ". You are Government. Output your opening constructive case in FLOW FORMAT. Label it GOVERNMENT CONSTRUCTIVE. Include brief definitions, C1, C2, and C3 if strong. Each contention: Claim, Warrant, Impact. Keep bullets short.";
+  },
+  opp_rebuts_and_constructs: function(res, userSpeech) {
+    return "Resolution: " + res + ". You are Opposition. The Government just said: " + userSpeech + ". Output in FLOW FORMAT. First label OPPOSITION REBUTTAL and go through each of their contentions. Then label OPPOSITION CONSTRUCTIVE with C1, C2, C3 if strong. Each: Claim, Warrant, Impact. Keep all bullets short.";
+  },
+  gov_rebuts_and_extends: function(res, userSpeech) {
+    return "Resolution: " + res + ". You are Government. The Opposition just said: " + userSpeech + ". Output in FLOW FORMAT. First label GOVERNMENT REBUTTAL and respond to each OPP contention, call out drops. Then label GOVERNMENT EXTENSION and re-extend your own contentions. Keep all bullets short.";
+  },
+  opp_rebuts_gov_extended: function(res, userSpeech) {
+    return "Resolution: " + res + ". You are Opposition. Government just extended: " + userSpeech + ". Output in FLOW FORMAT. Label OPPOSITION REBUTTAL and respond to their extensions, reinforce your own contentions. Keep all bullets short.";
+  },
+  bot_whip: function(res, botSide, userSpeech) {
+    return "Resolution: " + res + ". You are " + botSide + ". User just said: " + userSpeech + ". Output in FLOW FORMAT. Label " + botSide.toUpperCase() + " WHIP. List 2-3 voters. Under each voter: why YOU win it. Final bullet: your world vs their world. NO new arguments. Keep bullets short.";
+  },
+  judge_critique: function(res, userSide, botSide, userWhip, difficulty) {
+    const diffLabel = DIFFICULTY[difficulty] ? DIFFICULTY[difficulty].label : "Varsity";
+    return "Resolution: " + res + ". Difficulty: " + diffLabel + ". Human debated as " + userSide + ". AI opponent debated as " + botSide + ". Human's final whip: " + userWhip + ". You are an impartial judge. Label JUDGES DECISION. 1. DECISION: Who won and the core reason in 1-2 sentences. 2. DECISIVE ARGUMENTS: The 2-3 arguments that decided the round. 3. WHAT THE HUMAN DID WELL: Genuine praise only. 4. WHAT THE HUMAN DROPPED OR LOST: Be direct, name specific arguments. 5. WHAT TO IMPROVE: Specific actionable coaching.";
   },
 };
 
@@ -237,6 +70,8 @@ const s = {
   badgeGov: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#dbeafe", color:"#1d4ed8", border:"1px solid #bfdbfe" },
   badgeOpp: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ffe4e6", color:"#be123c", border:"1px solid #fecdd3" },
   badgePractice: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fef3c7", color:"#92400e", border:"1px solid #fde68a" },
+  badgeSpeaking: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ede9fe", color:"#7c3aed", border:"1px solid #ddd6fe" },
+  badgeRecording: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fee2e2", color:"#dc2626", border:"1px solid #fecaca" },
   body: { display:"flex", flex:1, overflow:"hidden" },
   sidebar: { width:220, background:"#fff", borderRight:"1px solid #e2e8f0", display:"flex", flexDirection:"column", gap:20, padding:16, overflowY:"auto", flexShrink:0 },
   sideLabel: { margin:"0 0 6px 0", fontSize:10, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace" },
@@ -262,6 +97,7 @@ const s = {
   msgTag: { fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:8 },
   msgActions: { marginTop:12, paddingTop:10, borderTop:"1px solid #f1f5f9", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" },
   smallBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
+  replayBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #ddd6fe", background:"#ede9fe", color:"#7c3aed", cursor:"pointer", marginTop:8, display:"inline-block" },
   loadingDot: { width:6, height:6, borderRadius:"50%", background:"#4f46e5", display:"inline-block", margin:"0 2px" },
   revBar: { padding:"12px 24px", background:"#fff", borderTop:"1px solid #e2e8f0" },
   revLabel: { fontSize:10, fontWeight:700, color:"#4f46e5", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:6 },
@@ -276,6 +112,8 @@ const s = {
   sendBtnRed: { background:"#e11d48", color:"#fff", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"pointer" },
   sendBtnDisabled: { background:"#f1f5f9", color:"#94a3b8", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"not-allowed" },
   inputHint: { fontSize:11, color:"#cbd5e1", marginTop:6, fontFamily:"monospace" },
+  micBtn: function(rec) { return { width:44, height:44, borderRadius:"50%", border:"none", cursor:"pointer", fontSize:18, flexShrink:0, color:"#fff", background: rec ? "#dc2626" : "#4f46e5", transition:"all 0.2s" }; },
+  transcriptBox: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#1e293b", minHeight:44, lineHeight:1.6, fontFamily:"Georgia, serif" },
   landing: { flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#f8fafc" },
   landingCard: { background:"#fff", borderRadius:20, padding:"48px 40px", boxShadow:"0 4px 24px rgba(0,0,0,0.08)", maxWidth:480, width:"100%", textAlign:"center" },
   landingTitle: { fontSize:26, fontWeight:700, margin:"0 0 8px 0", letterSpacing:"-0.02em" },
@@ -297,35 +135,94 @@ const s = {
   startBtnDisabled: { width:"100%", background:"#f1f5f9", color:"#cbd5e1", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"not-allowed", marginTop:4 },
   backBtn: { background:"none", border:"none", color:"#94a3b8", fontSize:12, cursor:"pointer", marginTop:14, fontFamily:"Georgia, serif", display:"block", textAlign:"center", width:"100%" },
   diffGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
-  micBtn: (recording) => ({
-    width:52, height:52, borderRadius:"50%", border:"none", cursor:"pointer", fontSize:20, flexShrink:0,
-    background: recording ? "#dc2626" : "#6366f1",
-    boxShadow: recording ? "0 0 0 6px rgba(220,38,38,0.2)" : "0 0 0 3px rgba(99,102,241,0.2)",
-    transition:"all 0.2s", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff",
-  }),
-  transcriptBox: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#1e293b", minHeight:52, lineHeight:1.6, fontFamily:"Georgia, serif" },
-  replayBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer", marginTop:8 },
-  diffBtn: (active, color, bg, border) => ({
-    padding:"10px 8px", borderRadius:10, fontSize:12, fontWeight: active ? 700 : 600,
-    border: active ? `2px solid ${color}` : "2px solid #e2e8f0",
-    background: active ? bg : "#fff",
-    color: active ? color : "#64748b",
-    cursor:"pointer", textAlign:"center",
-  }),
+  diffBtn: function(active, color, bg) { return { padding:"10px 8px", borderRadius:10, fontSize:12, fontWeight: active ? 700 : 600, border: active ? "2px solid " + color : "2px solid #e2e8f0", background: active ? bg : "#fff", color: active ? color : "#64748b", cursor:"pointer", textAlign:"center" }; },
 };
 
-const callGemini = async (prompt, systemOverride = null) => {
+function cleanForSpeech(text) {
+  const kills = ["Claim:", "claim:", "Warrant:", "warrant:", "Impact:", "impact:", "Sub:", "sub:", "C1:", "C2:", "C3:", "C4:", "C5:"];
+  let t = text;
+  for (let k = 0; k < kills.length; k++) {
+    const w = kills[k];
+    let idx = t.indexOf(w);
+    while (idx !== -1) {
+      t = t.slice(0, idx) + t.slice(idx + w.length);
+      idx = t.indexOf(w);
+    }
+  }
+  const out = [];
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    const code = t.charCodeAt(i);
+    if (c === "*" || c === "_" || c === "#" || c === "`" || c === "[" || c === "]" || c === "~") {
+      out.push(" ");
+    } else if (code === 8226 || code === 8212 || code === 8211) {
+      out.push(" ");
+    } else if (c === "-" && i > 0 && (t[i-1] === "\n" || t[i-1] === " " || t[i-1] === "\r")) {
+      out.push(" ");
+    } else if (c === "\n" || c === "\r") {
+      out.push(" ");
+    } else {
+      out.push(c);
+    }
+  }
+  let result = out.join("");
+  while (result.indexOf("  ") !== -1) {
+    result = result.split("  ").join(" ");
+  }
+  return result.trim();
+}
+
+function pickVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  for (let i = 0; i < voices.length; i++) {
+    if (voices[i].name === "Google US English") return voices[i];
+  }
+  for (let i = 0; i < voices.length; i++) {
+    if (voices[i].name.indexOf("Google") !== -1 && voices[i].lang.indexOf("en") === 0) return voices[i];
+  }
+  for (let i = 0; i < voices.length; i++) {
+    if (voices[i].name === "Alex" || voices[i].name === "Samantha") return voices[i];
+  }
+  for (let i = 0; i < voices.length; i++) {
+    if (voices[i].lang === "en-US") return voices[i];
+  }
+  return voices.length > 0 ? voices[0] : null;
+}
+
+function doSpeakText(text, onDone) {
+  window.speechSynthesis.cancel();
+  const clean = cleanForSpeech(text);
+  const attempt = function() {
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.rate = 1.2;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    const v = pickVoice();
+    if (v) utter.voice = v;
+    utter.onend = function() { if (onDone) onDone(); };
+    utter.onerror = function() { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utter);
+  };
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = attempt;
+  } else {
+    attempt();
+  }
+}
+
+function doStopSpeaking() {
+  window.speechSynthesis.cancel();
+}
+
+const callAPI = async function(prompt, system) {
   const res = await fetch("/api/gemini", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system: systemOverride || getFlowSystemPrompt("varsity"),
-      messages: [{ role: "user", content: prompt }],
-    }),
+    body: JSON.stringify({ system: system, messages: [{ role: "user", content: prompt }] }),
   });
   if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || "API error");
+    const err = await res.json().catch(function() { return {}; });
+    throw new Error(err.error || "API error");
   }
   const data = await res.json();
   if (!data.text) throw new Error("No text in response");
@@ -334,34 +231,25 @@ const callGemini = async (prompt, systemOverride = null) => {
 
 export default function App() {
   const [appMode, setAppMode] = useState("landing");
-
-  // Setup
   const [setupSide, setSetupSide] = useState(null);
   const [setupResMode, setSetupResMode] = useState(null);
   const [setupResText, setSetupResText] = useState("");
   const [setupLoading, setSetupLoading] = useState(false);
-
   const [setupDifficulty, setSetupDifficulty] = useState("varsity");
-
-  // Round
   const [difficulty, setDifficulty] = useState("varsity");
   const [resolution, setResolution] = useState("");
-  const [userSide, setUserSide] = useState(null); // "Government" | "Opposition"
+  const [userSide, setUserSide] = useState(null);
   const [botSide, setBotSide] = useState(null);
   const [stage, setStage] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [roundOver, setRoundOver] = useState(false);
-
-  // Voice / mic state
   const [speaking, setSpeaking] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [interimTranscript, setInterimTranscript] = useState("");
+  const [interim, setInterim] = useState("");
   const recognitionRef = useRef(null);
-
-  // Case gen
   const [caseRes, setCaseRes] = useState("");
   const [caseSide, setCaseSide] = useState(null);
   const [caseResSet, setCaseResSet] = useState(false);
@@ -371,68 +259,98 @@ export default function App() {
   const [caseLoading, setCaseLoading] = useState(false);
   const [caseFeedbackMode, setCaseFeedbackMode] = useState(null);
   const [caseFeedbackText, setCaseFeedbackText] = useState("");
-
   const messagesEndRef = useRef(null);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, caseMsgs]);
 
-  const addBotMessage = (content, type = "opponent") => {
-    setMessages(prev => [...prev, { role:"assistant", content, type }]);
+  useEffect(function() {
+    if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [messages, caseMsgs]);
+
+  useEffect(function() {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = function() { window.speechSynthesis.getVoices(); };
+  }, []);
+
+  const startRecording = function() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert("Speech recognition requires Chrome."); return; }
+    doStopSpeaking();
+    setSpeaking(false);
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = "en-US";
+    let finalText = transcript;
+    r.onresult = function(e) {
+      let inter = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) { finalText = finalText + e.results[i][0].transcript + " "; }
+        else { inter = e.results[i][0].transcript; }
+      }
+      setTranscript(finalText);
+      setInterim(inter);
+    };
+    r.onend = function() { setRecording(false); setInterim(""); };
+    r.onerror = function() { setRecording(false); setInterim(""); };
+    recognitionRef.current = r;
+    r.start();
+    setRecording(true);
   };
 
-  const botSpeak = async (prompt, type = "opponent", useJudge = false) => {
+  const stopRecording = function() {
+    if (recognitionRef.current) recognitionRef.current.stop();
+    setRecording(false);
+    setInterim("");
+  };
+
+  const botSpeak = async function(prompt, msgType, isJudge) {
+    const type = msgType || "opponent";
+    const judge = isJudge || false;
     setLoading(true);
     try {
-      if (useJudge) {
-        const text = await callGemini(prompt, JUDGE_SYSTEM);
-        setMessages(prev => [...prev, { role:"assistant", content:text, flow:text, verbatim:text, type }]);
+      if (judge) {
+        const text = await callAPI(prompt, JUDGE_SYSTEM);
+        setMessages(function(prev) { return prev.concat([{ role: "assistant", content: text, verbatim: text, type: type }]); });
         setSpeaking(true);
-        speakText(text, () => setSpeaking(false));
+        doSpeakText(text, function() { setSpeaking(false); });
       } else {
-        // Step 1: Generate flow first
-        const flow = await callGemini(prompt, getFlowSystemPrompt(difficulty));
-        // Step 2: Pass the flow to verbatim so it speaks the SAME arguments
-        const verbatimPrompt = "Here is the debate flow to expand into a spoken speech:\n\n" + flow + "\n\nNow deliver this as a full natural spoken speech. Same arguments, same order, no bullet points, no symbols, just natural spoken prose as a real debater would say it.";
-        const verbatim = await callGemini(verbatimPrompt, getVerbatimSystemPrompt(difficulty));
-        setMessages(prev => [...prev, { role:"assistant", content:flow, flow, verbatim, type }]);
+        const flow = await callAPI(prompt, getFlowPrompt(difficulty));
+        const vp = "Here is a debate flow sheet. Expand every point into natural spoken sentences in the same order. Write only plain spoken English words, no symbols no labels no asterisks no dashes no bullets: " + flow;
+        const verbatim = await callAPI(vp, getVerbatimPrompt(difficulty));
+        setMessages(function(prev) { return prev.concat([{ role: "assistant", content: flow, verbatim: verbatim, type: type }]); });
         setSpeaking(true);
-        speakText(verbatim, () => setSpeaking(false));
+        doSpeakText(verbatim, function() { setSpeaking(false); });
       }
     } catch (e) {
-      setMessages(prev => [...prev, { role:"assistant", content:`Error: ${e.message} — please try again.`, flow:`Error: ${e.message}`, verbatim:"", type }]);
+      setMessages(function(prev) { return prev.concat([{ role: "assistant", content: "Error: " + e.message, verbatim: "", type: type }]); });
     }
     setLoading(false);
   };
 
-  const generateResolution = async () => {
+  const generateResolution = async function() {
     setSetupLoading(true);
     setSetupResMode("generating");
-    const topics = ["technology","education","environment","healthcare","criminal justice","foreign policy","economics","social media","artificial intelligence","democracy","free speech","housing","immigration","energy","sports"];
+    const topics = ["technology","education","environment","healthcare","criminal justice","economics","social media","artificial intelligence","democracy","free speech"];
     const topic = topics[Math.floor(Math.random() * topics.length)];
     const seed = Math.floor(Math.random() * 99999);
     try {
-      const text = await callGemini(`Generate one unique, specific high school parliamentary debate resolution about ${topic}. Seed: ${seed}. Format examples: 'This house would ban social media for minors.' or 'This house believes that democracies should impose term limits on all elected officials.' Return ONLY the resolution text. No quotes, no explanation, nothing else.`, "You generate debate resolutions. Return only the resolution text, nothing else.");
-      setSetupResText(text.trim().replace(/^["']|["']$/g, "").replace(/\.$/, ""));
+      const text = await callAPI(
+        "Generate one unique specific high school parliamentary debate resolution about " + topic + ". Seed: " + seed + ". Return ONLY the resolution text starting with This house. No quotes no explanation.",
+        "You generate debate resolutions. Return only the resolution text, nothing else."
+      );
+      setSetupResText(text.trim().replace(/^["']/, "").replace(/["']$/, "").replace(/\.$/, ""));
       setSetupResMode("done");
-    } catch {
-      const fallbacks = [
-        "This house would ban social media for minors",
-        "This house believes that universal basic income should be implemented",
-        "This house would make voting mandatory",
-        "This house believes that AI development should be internationally regulated",
-        "This house would abolish the death penalty",
-      ];
-      setSetupResText(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+    } catch (e) {
+      const fb = ["This house would ban social media for minors","This house believes universal basic income should be implemented","This house would make voting mandatory","This house believes AI development should be internationally regulated"];
+      setSetupResText(fb[Math.floor(Math.random() * fb.length)]);
       setSetupResMode("done");
     }
     setSetupLoading(false);
   };
 
-  const startRound = async () => {
+  const startRound = async function() {
     const res = setupResText.trim();
     const uSide = setupSide === "gov" ? "Government" : "Opposition";
     const bSide = setupSide === "gov" ? "Opposition" : "Government";
-
-    // Set all state first, then switch mode
     setDifficulty(setupDifficulty);
     setResolution(res);
     setUserSide(uSide);
@@ -440,21 +358,22 @@ export default function App() {
     setMessages([]);
     setRoundOver(false);
     setInput("");
-
+    setTranscript("");
+    setInterim("");
     if (setupSide === "opp") {
       setStage(1);
       setLoading(true);
       setAppMode("practice");
       try {
-        const fl = await callGemini(ROUND_PROMPTS.gov_opens(res), getFlowSystemPrompt(setupDifficulty));
-        const vbPrompt = "Here is the debate flow to expand into a spoken speech:\n\n" + fl + "\n\nNow deliver this as a full natural spoken speech. Same arguments, same order, no bullet points, no symbols, just natural spoken prose as a real debater would say it.";
-        const vb = await callGemini(vbPrompt, getVerbatimSystemPrompt(setupDifficulty));
-        setMessages([{ role:"assistant", content:fl, flow:fl, verbatim:vb, type:"opponent" }]);
+        const flow = await callAPI(ROUND_PROMPTS.gov_opens(res), getFlowPrompt(setupDifficulty));
+        const vp = "Here is a debate flow sheet. Expand every point into natural spoken sentences in the same order. Write only plain spoken English, no symbols no labels no asterisks no dashes no bullets: " + flow;
+        const verbatim = await callAPI(vp, getVerbatimPrompt(setupDifficulty));
+        setMessages([{ role: "assistant", content: flow, verbatim: verbatim, type: "opponent" }]);
         setSpeaking(true);
-        speakText(vb, () => setSpeaking(false));
+        doSpeakText(verbatim, function() { setSpeaking(false); });
         setStage(2);
       } catch (e) {
-        setMessages([{ role:"assistant", content:`Error: ${e.message} — please go back and try again.`, type:"opponent" }]);
+        setMessages([{ role: "assistant", content: "Error: " + e.message, verbatim: "", type: "opponent" }]);
       }
       setLoading(false);
     } else {
@@ -463,106 +382,39 @@ export default function App() {
     }
   };
 
-  // GOV user round stages:
-  // 0 = user delivers opening
-  // 1 = bot (OPP) rebuts+constructs (loading)
-  // 2 = user rebuts bot
-  // 3 = bot (OPP) rebuts+extends (loading)
-  // 4 = user rebuts again / going to whip
-  // 5 = bot whip (loading)
-  // 6 = user whip
-  // 7 = judge (loading) → done
-
-  // OPP user round stages:
-  // 1 = bot (GOV) opens (loading)
-  // 2 = user rebuts+constructs
-  // 3 = bot (GOV) rebuts+extends (loading)
-  // 4 = user rebuts
-  // 5 = bot whip (loading)
-  // 6 = user whip
-  // 7 = judge (loading) → done
-
-  // Load voices on mount
-  useEffect(() => {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-  }, []);
-
-  const startRecording = useCallback(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert("Speech recognition not supported. Please use Chrome."); return; }
-    stopSpeaking();
-    setSpeaking(false);
-    const recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    let finalText = transcript;
-    recognition.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { finalText += e.results[i][0].transcript + " "; }
-        else { interim = e.results[i][0].transcript; }
-      }
-      setTranscript(finalText);
-      setInterimTranscript(interim);
-    };
-    recognition.onend = () => { setRecording(false); setInterimTranscript(""); };
-    recognition.onerror = () => { setRecording(false); setInterimTranscript(""); };
-    recognitionRef.current = recognition;
-    recognition.start();
-    setRecording(true);
-  }, [transcript]);
-
-  const stopRecording = useCallback(() => {
-    recognitionRef.current?.stop();
-    setRecording(false);
-    setInterimTranscript("");
-  }, []);
-
-  const handleUserSpeech = async () => {
-    const userText = (transcript.trim() || input.trim());
+  const handleUserSpeech = async function() {
+    const userText = transcript.trim() || input.trim();
     if (!userText || loading || speaking) return;
     setInput("");
     setTranscript("");
-    setInterimTranscript("");
-    setMessages(prev => [...prev, { role:"user", content:userText, type:"user" }]);
-
+    setInterim("");
+    setMessages(function(prev) { return prev.concat([{ role: "user", content: userText, type: "user" }]); });
     if (userSide === "Government") {
       if (stage === 0) {
-        // GOV constructive -> bot OPP constructive+rebuttal
         setStage(1);
         await botSpeak(ROUND_PROMPTS.opp_rebuts_and_constructs(resolution, userText));
         setStage(2);
       } else if (stage === 2) {
-        // GOV rebuttal+rebuild -> bot OPP rebuttal+rebuild
         setStage(3);
         await botSpeak(ROUND_PROMPTS.opp_rebuts_gov_extended(resolution, userText));
         setStage(4);
       } else if (stage === 4) {
-        // After OPP rebuild: bot delivers OPP whip
         setStage(5);
         await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Opposition", userText));
         setStage(6);
       } else if (stage === 6) {
-        // GOV whip (final) -> judge
         setStage(7);
         await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Government", "Opposition", userText, difficulty), "judge", true);
         setRoundOver(true);
       }
     } else {
-      // User is OPP
       if (stage === 2) {
-        // OPP constructive+rebuttal -> bot GOV rebuttal+rebuild
         setStage(3);
         await botSpeak(ROUND_PROMPTS.gov_rebuts_and_extends(resolution, userText));
         setStage(4);
       } else if (stage === 4) {
-        // OPP rebuttal+rebuild -> user delivers OPP whip next (stage 6)
-        // But first nothing — user goes to stage 6 directly
         setStage(6);
       } else if (stage === 6) {
-        // OPP whip delivered -> bot GOV whip (final) -> judge
         setStage(5);
         await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Government", userText));
         setStage(7);
@@ -572,59 +424,58 @@ export default function App() {
     }
   };
 
-  const getInputLabel = () => {
+  const getInputLabel = function() {
     if (roundOver || loading) return null;
     if (userSide === "Government") {
-      if (stage === 0) return "YOUR SPEECH — Government Constructive";
-      if (stage === 2) return "YOUR SPEECH — Government Rebuttal + Rebuild";
-      if (stage === 4) return "YOUR SPEECH — Government Rebuttal + Rebuild (2nd)";
-      if (stage === 6) return "YOUR SPEECH — Government Whip (Final)";
+      if (stage === 0) return "YOUR SPEECH: Government Opening Constructive";
+      if (stage === 2) return "YOUR SPEECH: Government Rebuttal + Rebuild";
+      if (stage === 4) return "YOUR SPEECH: Government Rebuttal (Pre-Whip)";
+      if (stage === 6) return "YOUR SPEECH: Government Whip (Final)";
     } else {
-      if (stage === 2) return "YOUR SPEECH — Opposition Constructive + Rebuttal";
-      if (stage === 4) return "YOUR SPEECH — Opposition Rebuttal + Rebuild";
-      if (stage === 6) return "YOUR SPEECH — Opposition Whip";
+      if (stage === 2) return "YOUR SPEECH: Opposition Constructive + Rebuttal";
+      if (stage === 4) return "YOUR SPEECH: Opposition Rebuttal + Rebuild";
+      if (stage === 6) return "YOUR SPEECH: Opposition Whip";
     }
     return null;
   };
 
-  const isUserTurn = () => {
+  const isUserTurn = function() {
     if (roundOver || loading || speaking) return false;
-    if (userSide === "Government") return [0, 2, 4, 6].includes(stage);
-    return [2, 4, 6].includes(stage);
+    if (userSide === "Government") return stage === 0 || stage === 2 || stage === 4 || stage === 6;
+    return stage === 2 || stage === 4 || stage === 6;
   };
 
-  const getProgressSteps = () => {
+  const getProgressSteps = function() {
     if (userSide === "Government") {
       return [
-        { label:"You Open", active: stage === 0, done: stage > 0 },
-        { label:"Opp Rebuts", active: stage === 1, done: stage > 1 },
-        { label:"You Rebut", active: stage === 2, done: stage > 2 },
-        { label:"Opp Extends", active: stage === 3, done: stage > 3 },
-        { label:"You Rebut", active: stage === 4, done: stage > 4 },
-        { label:"Opp Whip", active: stage === 5, done: stage > 5 },
-        { label:"Your Whip", active: stage === 6, done: stage > 6 },
-        { label:"Judge", active: stage === 7, done: roundOver },
+        { label: "Gov Constructive", active: stage === 0, done: stage > 0 },
+        { label: "Opp Constructive+Rebuttal", active: stage === 1, done: stage > 1 },
+        { label: "Gov Rebuttal+Rebuild", active: stage === 2, done: stage > 2 },
+        { label: "Opp Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
+        { label: "Opp Whip", active: stage === 5, done: stage > 5 },
+        { label: "Gov Whip", active: stage === 6, done: stage > 6 },
+        { label: "Judge", active: stage === 7, done: roundOver },
       ];
     }
     return [
-      { label:"Gov Constructive", active: stage === 1, done: stage > 1 },
-      { label:"Opp Constructive+Rebuttal", active: stage === 2, done: stage > 2 },
-      { label:"Gov Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
-      { label:"Opp Rebuttal+Rebuild", active: stage === 4, done: stage > 4 },
-      { label:"Opp Whip", active: stage === 6, done: stage > 6 },
-      { label:"Gov Whip", active: stage === 7, done: roundOver },
-      { label:"Judge", active: stage === 7, done: roundOver },
+      { label: "Gov Constructive", active: stage === 1, done: stage > 1 },
+      { label: "Opp Constructive+Rebuttal", active: stage === 2, done: stage > 2 },
+      { label: "Gov Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
+      { label: "Opp Rebuttal+Rebuild", active: stage === 4, done: stage > 4 },
+      { label: "Opp Whip", active: stage === 6, done: stage > 6 },
+      { label: "Gov Whip", active: stage === 7, done: roundOver },
+      { label: "Judge", active: stage === 7, done: roundOver },
     ];
   };
 
-  const resetToLanding = () => {
-    setAppMode("landing");
-    stopSpeaking();
-    recognitionRef.current?.stop();
+  const resetToLanding = function() {
+    doStopSpeaking();
+    if (recognitionRef.current) recognitionRef.current.stop();
     setSpeaking(false);
     setRecording(false);
     setTranscript("");
-    setInterimTranscript("");
+    setInterim("");
+    setAppMode("landing");
     setSetupSide(null);
     setSetupResMode(null);
     setSetupResText("");
@@ -640,82 +491,83 @@ export default function App() {
     setLoading(false);
   };
 
-  const sendCaseMessage = async (text, isFeedback = false) => {
+  const sendCaseMessage = async function(text, isFeedback) {
     if (!text.trim()) return;
-    const newMsgs = [...caseMsgs, { role:"user", content:text, isFeedback }];
+    const newMsgs = caseMsgs.concat([{ role: "user", content: text, isFeedback: isFeedback || false }]);
     setCaseMsgs(newMsgs);
     setCaseInput("");
     setCaseFeedbackMode(null);
     setCaseFeedbackText("");
     setCaseLoading(true);
     try {
-      const context = `RESOLUTION: "${caseRes}"\nSIDE: ${caseSide === "gov" ? "Government" : "Opposition"}\nSPEECH TYPE: ${caseSpeechType}\n\n`;
-      const apiMsgs = newMsgs.map((m, i) => ({ role:m.role, content: i===0 ? context+m.content : m.content }));
+      const context = "RESOLUTION: " + caseRes + "\nSIDE: " + (caseSide === "gov" ? "Government" : "Opposition") + "\nSPEECH TYPE: " + caseSpeechType + "\n\n";
+      const apiMsgs = newMsgs.map(function(m, i) { return { role: m.role, content: i === 0 ? context + m.content : m.content }; });
       const res = await fetch("/api/gemini", {
-        method:"POST", headers:{"Content-Type":"application/json"},
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ system: SYSTEM_PROMPT, messages: apiMsgs }),
       });
       const data = await res.json();
-      setCaseMsgs([...newMsgs, { role:"assistant", content: data.text || "No response." }]);
-    } catch {
-      setCaseMsgs([...newMsgs, { role:"assistant", content:"Error — please try again." }]);
+      setCaseMsgs(newMsgs.concat([{ role: "assistant", content: data.text || "No response." }]));
+    } catch (e) {
+      setCaseMsgs(newMsgs.concat([{ role: "assistant", content: "Error, please try again." }]));
     }
     setCaseLoading(false);
   };
 
-  const handleCaseQuickAction = (action) => {
+  const handleCaseQuickAction = function(action) {
     if (!caseResSet || !caseSide) return;
     const side = caseSide === "gov" ? "Government" : "Opposition";
     const prompts = {
-      case: `Generate a full ${side === "Government" ? "Prime Minister (Government)" : "Leader of Opposition"} constructive case. Complete 8-minute case with definitions, intro, and all contentions fully fleshed out. Include a creative third contention if possible.`,
-      whip: `Generate a ${side} Whip speech (5 minutes). Focus on weighing, voters, comparing the two worlds. No new arguments.`,
-      plan: `Write a policy plan for the ${side} side. Include: Plantext, Actor, Timeframe, and Cost/Mechanism.`,
-      counterplan: `Write a counterplan for the ${side} side. Include: Plantext, Net Benefit, Actor, Timeframe, and Cost/Mechanism.`,
+      case: "Generate a full " + (side === "Government" ? "Prime Minister Government" : "Leader of Opposition") + " constructive case. Complete 8-minute case with definitions, intro, and all contentions fully fleshed out. Include a creative third contention if possible.",
+      whip: "Generate a " + side + " Whip speech 5 minutes. Focus on weighing, voters, comparing the two worlds. No new arguments.",
+      plan: "Write a policy plan for the " + side + " side. Include: Plantext, Actor, Timeframe, and Cost/Mechanism.",
+      counterplan: "Write a counterplan for the " + side + " side. Include: Plantext, Net Benefit, Actor, Timeframe, and Cost/Mechanism.",
     };
     sendCaseMessage(prompts[action]);
   };
 
-  const formatMessage = (text) => {
-    return text.split("\n").map((line, i) => {
+  const formatMessage = function(text) {
+    return text.split("\n").map(function(line, i) {
       if (/^#{1,3} /.test(line)) return <div key={i} style={{ fontWeight:700, fontSize:14, marginTop:12, marginBottom:4 }}>{line.replace(/^#{1,3} /,"")}</div>;
       if (/^\*\*(.+)\*\*$/.test(line)) return <div key={i} style={{ fontWeight:700, marginTop:8, marginBottom:2 }}>{line.replace(/\*\*/g,"")}</div>;
       if (/^\*\*(.+)\*\*/.test(line)) {
         const parts = line.split(/\*\*/g);
-        return <div key={i} style={{ marginBottom:2 }}>{parts.map((p,j) => j%2===1 ? <strong key={j}>{p}</strong> : <span key={j}>{p}</span>)}</div>;
+        return <div key={i} style={{ marginBottom:2 }}>{parts.map(function(p,j) { return j%2===1 ? <strong key={j}>{p}</strong> : <span key={j}>{p}</span>; })}</div>;
       }
-      if (/^- /.test(line)) return <div key={i} style={{ paddingLeft:16, marginBottom:2, color:"#475569" }}>•&nbsp;{line.slice(2)}</div>;
-      if (/^(Contention|Layer|Sub-argument|Voter|CONTENTION|LAYER|VOTER|—)\s*/i.test(line)) return <div key={i} style={{ fontWeight:700, color:"#4f46e5", marginTop:14, marginBottom:4, fontSize:13, letterSpacing:"0.02em" }}>{line}</div>;
+      if (/^- /.test(line)) return <div key={i} style={{ paddingLeft:16, marginBottom:2, color:"#475569" }}>{"• "}{line.slice(2)}</div>;
       if (/^(CLAIM|WARRANT|IMPACT|Claim:|Warrant:|Impact:)/i.test(line)) return <div key={i} style={{ fontWeight:700, color:"#0f766e", marginTop:8, marginBottom:2, fontSize:12, fontFamily:"monospace" }}>{line}</div>;
-      if (line.trim()==="") return <div key={i} style={{ height:8 }} />;
+      if (line.trim() === "") return <div key={i} style={{ height:8 }} />;
       return <div key={i} style={{ marginBottom:2, lineHeight:1.7 }}>{line}</div>;
     });
   };
 
   const canStart = setupSide && setupResText.trim();
+  const userTurn = isUserTurn();
+  const label = getInputLabel();
+  const diff = DIFFICULTY[difficulty];
 
-  // ── LANDING ──
   if (appMode === "landing") {
     return (
       <div style={s.app}>
         <header style={s.header}>
           <div style={s.headerLeft}>
-            <div style={s.logo}>⚖</div>
+            <div style={s.logo}>{"⚖"}</div>
             <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
           </div>
         </header>
         <div style={s.landing}>
           <div style={s.landingCard}>
-            <div style={{ fontSize:52, marginBottom:16 }}>⚖️</div>
+            <div style={{ fontSize:52, marginBottom:16 }}>{"⚖️"}</div>
             <p style={s.landingTitle}>Ready to debate.</p>
             <p style={s.landingSubtitle}>Generate a full case or simulate a complete debate round against the AI.</p>
             <div style={s.landingGrid}>
-              <button style={s.landingBtnCase} onClick={() => setAppMode("case")}>
-                <span style={{ fontSize:28 }}>📋</span>
+              <button style={s.landingBtnCase} onClick={function() { setAppMode("case"); }}>
+                <span style={{ fontSize:28 }}>{"📋"}</span>
                 Case Generator
                 <span style={s.landingBtnSub}>Build a full 8-min case</span>
               </button>
-              <button style={s.landingBtnPractice} onClick={() => setAppMode("setup")}>
-                <span style={{ fontSize:28 }}>⚔️</span>
+              <button style={s.landingBtnPractice} onClick={function() { setAppMode("setup"); }}>
+                <span style={{ fontSize:28 }}>{"⚔️"}</span>
                 Full Round Practice
                 <span style={s.landingBtnSub}>Simulate a real round</span>
               </button>
@@ -726,116 +578,83 @@ export default function App() {
     );
   }
 
-  // ── SETUP ──
   if (appMode === "setup") {
     return (
       <div style={s.app}>
         <header style={s.header}>
           <div style={s.headerLeft}>
-            <div style={s.logo}>⚖</div>
+            <div style={s.logo}>{"⚖"}</div>
             <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
           </div>
-          <span style={s.badgePractice}>⚔ SETUP</span>
+          <span style={s.badgePractice}>{"⚔ SETUP"}</span>
         </header>
         <div style={s.landing}>
           <div style={s.setupCard}>
-            <p style={s.setupTitle}>⚔️ Full Round Practice</p>
+            <p style={s.setupTitle}>{"⚔️ Full Round Practice"}</p>
             <p style={s.setupSubtitle}>Pick your side and resolution. Gov always opens, Opp always responds first.</p>
-
             <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Your Side</span>
               <div style={s.sideGrid}>
-                <button style={setupSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={() => setSetupSide("gov")}>GOV</button>
-                <button style={setupSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={() => setSetupSide("opp")}>OPP</button>
+                <button style={setupSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setSetupSide("gov"); }}>GOV</button>
+                <button style={setupSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setSetupSide("opp"); }}>OPP</button>
               </div>
-              {setupSide && (
-                <div style={{ fontSize:11, color:"#94a3b8", marginTop:8, fontFamily:"monospace" }}>
-                  {setupSide === "gov" ? "You open. Bot plays Opposition." : "Bot opens as Government. You respond first."}
-                </div>
-              )}
+              {setupSide && <div style={{ fontSize:11, color:"#94a3b8", marginTop:8, fontFamily:"monospace" }}>{setupSide === "gov" ? "You open. Bot plays Opposition." : "Bot opens as Government. You respond first."}</div>}
             </div>
-
             <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Difficulty</span>
               <div style={s.diffGrid}>
-                {Object.entries(DIFFICULTY).map(([key, d]) => (
-                  <button
-                    key={key}
-                    style={s.diffBtn(setupDifficulty === key, d.color, d.bg, d.border)}
-                    onClick={() => setSetupDifficulty(key)}
-                  >
-                    {d.label}
-                    <div style={{ fontSize:10, fontWeight:400, marginTop:3, opacity:0.8 }}>{d.description}</div>
-                  </button>
-                ))}
+                {Object.entries(DIFFICULTY).map(function(entry) {
+                  const key = entry[0];
+                  const d = entry[1];
+                  return (
+                    <button key={key} style={s.diffBtn(setupDifficulty === key, d.color, d.bg)} onClick={function() { setSetupDifficulty(key); }}>
+                      {d.label}
+                      <div style={{ fontSize:10, fontWeight:400, marginTop:3, opacity:0.8 }}>{d.description}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-
             <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Resolution</span>
               <div style={s.optionGrid}>
-                <button
-                  style={setupResMode === "generating" ? { ...s.optionBtn, opacity:0.5 } : s.optionBtn}
-                  onClick={generateResolution}
-                  disabled={setupLoading}
-                >
+                <button style={setupResMode === "generating" ? Object.assign({}, s.optionBtn, { opacity:0.5 }) : s.optionBtn} onClick={generateResolution} disabled={setupLoading}>
                   {setupLoading ? "Generating..." : "🎲 Generate one"}
                 </button>
-                <button
-                  style={setupResMode === "custom" ? s.optionBtnActive : s.optionBtn}
-                  onClick={() => { setSetupResMode("custom"); setSetupResText(""); }}
-                >
-                  ✏️ Enter my own
+                <button style={setupResMode === "custom" ? s.optionBtnActive : s.optionBtn} onClick={function() { setSetupResMode("custom"); setSetupResText(""); }}>
+                  {"✏️ Enter my own"}
                 </button>
               </div>
               {(setupResMode === "custom" || setupResMode === "done") && (
-                <input
-                  autoFocus={setupResMode === "custom"}
-                  style={{ ...s.resInput, marginTop:10 }}
-                  placeholder="Type your resolution..."
-                  value={setupResText}
-                  onChange={(e) => setSetupResText(e.target.value)}
-                />
+                <input autoFocus={setupResMode === "custom"} style={Object.assign({}, s.resInput, { marginTop:10 })} placeholder="Type your resolution..." value={setupResText} onChange={function(e) { setSetupResText(e.target.value); }} />
               )}
             </div>
-
-            <button
-              style={canStart && !setupLoading ? s.startBtn : s.startBtnDisabled}
-              disabled={!canStart || setupLoading}
-              onClick={startRound}
-            >
-              Start Round →
-            </button>
-            <button style={s.backBtn} onClick={resetToLanding}>← Back</button>
+            <button style={canStart && !setupLoading ? s.startBtn : s.startBtnDisabled} disabled={!canStart || setupLoading} onClick={startRound}>Start Round</button>
+            <button style={s.backBtn} onClick={resetToLanding}>{"← Back"}</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── FULL ROUND ──
   if (appMode === "practice") {
     const steps = getProgressSteps();
-    const label = getInputLabel();
-    const userTurn = isUserTurn();
-
     return (
       <div style={s.app}>
         <header style={s.header}>
           <div style={s.headerLeft}>
-            <div style={s.logo}>⚖</div>
+            <div style={s.logo}>{"⚖"}</div>
             <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
           </div>
           <div style={s.headerBadges}>
             <span style={userSide === "Government" ? s.badgeGov : s.badgeOpp}>{userSide === "Government" ? "▲ GOV" : "▼ OPP"}</span>
-            <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background: DIFFICULTY[difficulty]?.bg || "#ede9fe", color: DIFFICULTY[difficulty]?.color || "#7c3aed", border:`1px solid ${DIFFICULTY[difficulty]?.border || "#ddd6fe"}` }}>{DIFFICULTY[difficulty]?.label || "Varsity"}</span>
-            <span style={s.badgePractice}>⚔ FULL ROUND</span>
-            {speaking && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ede9fe", color:"#7c3aed", border:"1px solid #ddd6fe" }}>🔊 Speaking</span>}
-            {recording && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fee2e2", color:"#dc2626", border:"1px solid #fecaca" }}>🔴 Recording</span>}
-            <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
+            {diff && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background: diff.bg, color: diff.color, border: "1px solid " + diff.border }}>{diff.label}</span>}
+            <span style={s.badgePractice}>{"⚔ FULL ROUND"}</span>
+            {speaking && <span style={s.badgeSpeaking}>{"🔊 Speaking"}</span>}
+            {recording && <span style={s.badgeRecording}>{"🔴 Recording"}</span>}
+            <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>{"← Home"}</button>
           </div>
         </header>
-
         <div style={s.body}>
           <aside style={s.sidebar}>
             <div>
@@ -844,59 +663,47 @@ export default function App() {
             </div>
             <div>
               <p style={s.sideLabel}>Round Progress</p>
-              {steps.map((step, i) => (
-                <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", flexShrink:0, background: step.done ? "#4f46e5" : step.active ? "#fbbf24" : "#e2e8f0" }} />
-                  <span style={{ fontSize:12, fontWeight: step.active ? 700 : 400, color: step.done ? "#4f46e5" : step.active ? "#92400e" : "#cbd5e1" }}>{step.label}</span>
-                </div>
-              ))}
+              {steps.map(function(step, i) {
+                return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <div style={{ width:8, height:8, borderRadius:"50%", flexShrink:0, background: step.done ? "#4f46e5" : step.active ? "#fbbf24" : "#e2e8f0" }} />
+                    <span style={{ fontSize:12, fontWeight: step.active ? 700 : 400, color: step.done ? "#4f46e5" : step.active ? "#92400e" : "#cbd5e1" }}>{step.label}</span>
+                  </div>
+                );
+              })}
             </div>
-            {speaking && (
-              <div>
-                <p style={s.sideLabel}>Audio</p>
-                <button style={s.actionBtn} onClick={() => { stopSpeaking(); setSpeaking(false); }}>⏹ Stop Speaking</button>
-              </div>
-            )}
-            {roundOver && (
-              <button style={{ ...s.actionBtn, background:"#4f46e5", color:"#fff", border:"none", fontWeight:700, cursor:"pointer" }} onClick={() => setAppMode("setup")}>🔄 New Round</button>
-            )}
-            <button style={s.actionBtn} onClick={resetToLanding}>← Home</button>
+            {speaking && <button style={s.actionBtn} onClick={function() { doStopSpeaking(); setSpeaking(false); }}>{"⏹ Stop Speaking"}</button>}
+            {roundOver && <button style={Object.assign({}, s.actionBtn, { background:"#4f46e5", color:"#fff", border:"none", fontWeight:700 })} onClick={function() { setAppMode("setup"); }}>{"🔄 New Round"}</button>}
+            <button style={s.actionBtn} onClick={resetToLanding}>{"← Home"}</button>
           </aside>
-
           <main style={s.chat}>
             <div style={s.messages}>
               {messages.length === 0 && !loading && (
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", gap:8, textAlign:"center" }}>
-                  <div style={{ fontSize:36 }}>⚔️</div>
+                  <div style={{ fontSize:36 }}>{"⚔️"}</div>
                   <p style={{ fontSize:16, fontWeight:700, margin:0 }}>Round starting...</p>
-                  {userSide === "Government" && <p style={{ fontSize:13, color:"#94a3b8", margin:0 }}>You open. Deliver your Government constructive case below.</p>}
+                  {userSide === "Government" && <p style={{ fontSize:13, color:"#94a3b8", margin:0 }}>You open. Deliver your Government constructive below.</p>}
                 </div>
               )}
-
-              {messages.map((msg, i) => (
-                <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
-                  <div style={
-                    msg.role === "user" ? s.msgUser
-                    : msg.type === "judge" ? s.msgAsstJudge
-                    : s.msgAsstOpponent
-                  }>
-                    {msg.role === "assistant" && msg.type === "opponent" && <div style={{ ...s.msgTag, color:"#be123c" }}>⚔ {botSide}</div>}
-                    {msg.role === "assistant" && msg.type === "judge" && <div style={{ ...s.msgTag, color:"#15803d" }}>🏛 Judge's Critique</div>}
-                    {msg.role === "user" && <div style={{ ...s.msgTag, color:"rgba(255,255,255,0.6)" }}>🎤 {userSide}</div>}
-                    {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
-                    {msg.role === "assistant" && msg.verbatim && (
-                      <button style={s.replayBtn} onClick={() => { stopSpeaking(); setSpeaking(true); speakText(msg.verbatim, () => setSpeaking(false)); }}>
-                        🔊 Replay speech
-                      </button>
-                    )}
+              {messages.map(function(msg, i) {
+                return (
+                  <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
+                    <div style={msg.role === "user" ? s.msgUser : msg.type === "judge" ? s.msgAsstJudge : s.msgAsstOpponent}>
+                      {msg.role === "assistant" && msg.type === "opponent" && <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{"⚔ " + botSide}</div>}
+                      {msg.role === "assistant" && msg.type === "judge" && <div style={Object.assign({}, s.msgTag, { color:"#15803d" })}>{"🏛 Judges Decision"}</div>}
+                      {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{"🎤 " + userSide}</div>}
+                      {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
+                      {msg.role === "assistant" && msg.verbatim && (
+                        <button style={s.replayBtn} onClick={function() { doStopSpeaking(); setSpeaking(true); doSpeakText(msg.verbatim, function() { setSpeaking(false); }); }}>{"🔊 Replay speech"}</button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-
+                );
+              })}
               {loading && (
                 <div style={s.msgWrapAsst}>
                   <div style={s.msgAsstOpponent}>
-                    <div style={{ ...s.msgTag, color:"#be123c" }}>⚔ {botSide}</div>
+                    <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{"⚔ " + botSide}</div>
                     <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Preparing speech</span>
                     <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                   </div>
@@ -904,47 +711,25 @@ export default function App() {
               )}
               <div ref={messagesEndRef} />
             </div>
-
             <div style={s.inputBar}>
-              {label && <div style={s.speechLabel}>🎤 {label}</div>}
-              {speaking && <div style={{ fontSize:11, color:"#7c3aed", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>🔊 Opponent speaking — hit mic to interrupt</div>}
+              {label && <div style={s.speechLabel}>{"🎤 " + label}</div>}
+              {speaking && <div style={{ fontSize:11, color:"#7c3aed", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>{"🔊 Opponent speaking"}</div>}
               {!userTurn && !loading && !speaking && !roundOver && <div style={{ fontSize:11, color:"#94a3b8", marginBottom:6, fontFamily:"monospace" }}>Opponent is preparing...</div>}
-              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>✓ Round complete — see judge's decision above</div>}
+              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>{"✓ Round complete"}</div>}
               <div style={s.inputRow}>
-                <button
-                  style={s.micBtn(recording)}
-                  onClick={recording ? stopRecording : startRecording}
-                  disabled={!userTurn && !recording}
-                  title={recording ? "Stop recording" : "Start recording"}
-                >
-                  {recording ? "⏹" : "🎤"}
-                </button>
+                <button style={s.micBtn(recording)} onClick={recording ? stopRecording : startRecording} disabled={!userTurn && !recording} title={recording ? "Stop" : "Record"}>{recording ? "⏹" : "🎤"}</button>
                 <div style={s.transcriptBox}>
-                  {transcript || interimTranscript
-                    ? <span>{transcript}<span style={{ color:"#94a3b8" }}>{interimTranscript}</span></span>
-                    : <span style={{ color:"#cbd5e1" }}>
-                        {roundOver ? "Round is over." : !userTurn ? "Wait for opponent..." : "Hit mic and speak, or type below..."}
-                      </span>
+                  {(transcript || interim)
+                    ? <span>{transcript}<span style={{ color:"#94a3b8" }}>{interim}</span></span>
+                    : <span style={{ color:"#cbd5e1" }}>{roundOver ? "Round over." : !userTurn ? "Waiting..." : "Mic to speak, or type below"}</span>
                   }
                 </div>
-                <button
-                  style={!(transcript.trim()||input.trim())||!userTurn||speaking ? s.sendBtnDisabled : s.sendBtnRed}
-                  onClick={handleUserSpeech}
-                  disabled={!(transcript.trim()||input.trim())||!userTurn||speaking}
-                >Deliver</button>
+                <button style={!(transcript.trim() || input.trim()) || !userTurn || speaking ? s.sendBtnDisabled : s.sendBtnRed} onClick={handleUserSpeech} disabled={!(transcript.trim() || input.trim()) || !userTurn || speaking}>Deliver</button>
               </div>
-              <div style={s.inputRow} style={{ marginTop:6 }}>
-                <textarea
-                  style={{ ...s.inputTextarea, fontSize:12 }}
-                  rows={2}
-                  placeholder="Or type your speech here..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={!userTurn || speaking}
-                  onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); if ((input.trim()||transcript.trim())&&userTurn) handleUserSpeech(); }}}
-                />
-              </div>
-              <div style={s.inputHint}>🎤 Mic to record · Type to write · Deliver when done · Chrome recommended</div>
+              <textarea style={Object.assign({}, s.inputTextarea, { marginTop:8, fontSize:12 })} rows={2} placeholder="Or type your speech here..." value={input} onChange={function(e) { setInput(e.target.value); }} disabled={!userTurn || speaking}
+                onKeyDown={function(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if ((input.trim() || transcript.trim()) && userTurn && !speaking) handleUserSpeech(); } }}
+              />
+              <div style={s.inputHint}>{"🎤 Mic (Chrome only) · Or type · Deliver when ready"}</div>
             </div>
           </main>
         </div>
@@ -952,97 +737,93 @@ export default function App() {
     );
   }
 
-  // ── CASE GENERATOR ──
   return (
     <div style={s.app}>
       <header style={s.header}>
         <div style={s.headerLeft}>
-          <div style={s.logo}>⚖</div>
+          <div style={s.logo}>{"⚖"}</div>
           <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
         </div>
         <div style={s.headerBadges}>
-          {caseResSet && caseSide && <span style={caseSide==="gov" ? s.badgeGov : s.badgeOpp}>{caseSide==="gov" ? "▲ GOV" : "▼ OPP"}</span>}
-          <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>← Home</button>
+          {caseResSet && caseSide && <span style={caseSide === "gov" ? s.badgeGov : s.badgeOpp}>{caseSide === "gov" ? "▲ GOV" : "▼ OPP"}</span>}
+          <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>{"← Home"}</button>
         </div>
       </header>
       <div style={s.body}>
         <aside style={s.sidebar}>
           <div>
             <p style={s.sideLabel}>Resolution</p>
-            <textarea style={s.textarea} rows={3} placeholder="Enter the resolution..." value={caseRes} onChange={(e) => setCaseRes(e.target.value)} disabled={caseResSet} />
+            <textarea style={s.textarea} rows={3} placeholder="Enter the resolution..." value={caseRes} onChange={function(e) { setCaseRes(e.target.value); }} disabled={caseResSet} />
             {!caseResSet
-              ? <button style={s.btnPrimary} onClick={() => { if (caseRes.trim()) { setCaseResSet(true); setCaseMsgs([]); }}} disabled={!caseRes.trim()}>Set Resolution</button>
-              : <button style={s.btnSecondary} onClick={() => { setCaseResSet(false); setCaseSide(null); setCaseMsgs([]); }}>Change</button>
+              ? <button style={s.btnPrimary} onClick={function() { if (caseRes.trim()) { setCaseResSet(true); setCaseMsgs([]); } }} disabled={!caseRes.trim()}>Set Resolution</button>
+              : <button style={s.btnSecondary} onClick={function() { setCaseResSet(false); setCaseSide(null); setCaseMsgs([]); }}>Change</button>
             }
           </div>
           {caseResSet && (
             <div>
               <p style={s.sideLabel}>Side</p>
               <div style={s.sideGrid}>
-                <button style={caseSide==="gov" ? s.btnGovActive : s.btnGovInactive} onClick={() => setCaseSide("gov")}>GOV</button>
-                <button style={caseSide==="opp" ? s.btnOppActive : s.btnOppInactive} onClick={() => setCaseSide("opp")}>OPP</button>
+                <button style={caseSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setCaseSide("gov"); }}>GOV</button>
+                <button style={caseSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setCaseSide("opp"); }}>OPP</button>
               </div>
             </div>
           )}
           {caseResSet && caseSide && (
-            <>
+            <div>
               <div>
                 <p style={s.sideLabel}>Speech</p>
-                <select style={s.select} value={caseSpeechType} onChange={(e) => setCaseSpeechType(e.target.value)}>
-                  <option value="constructive">{caseSide==="gov" ? "PM Constructive" : "LO Constructive"}</option>
-                  <option value="extension">{caseSide==="gov" ? "MG Extension" : "MO Extension"}</option>
-                  <option value="whip">{caseSide==="gov" ? "Gov Whip (3rd)" : "Opp Whip (3rd)"}</option>
+                <select style={s.select} value={caseSpeechType} onChange={function(e) { setCaseSpeechType(e.target.value); }}>
+                  <option value="constructive">{caseSide === "gov" ? "PM Constructive" : "LO Constructive"}</option>
+                  <option value="extension">{caseSide === "gov" ? "MG Extension" : "MO Extension"}</option>
+                  <option value="whip">{caseSide === "gov" ? "Gov Whip" : "Opp Whip"}</option>
                 </select>
               </div>
-              <div>
+              <div style={{ marginTop:16 }}>
                 <p style={s.sideLabel}>Generate</p>
-                {[
-                  { key:"case", icon:"📋", label:"Full Case" },
-                  { key:"whip", icon:"🏁", label:"Whip Speech" },
-                  { key:"plan", icon:"📄", label:"Write a Plan" },
-                  { key:"counterplan", icon:"↩️", label:"Counterplan" },
-                ].map(({key,icon,label}) => (
-                  <button key={key} style={s.actionBtn} onClick={() => handleCaseQuickAction(key)} disabled={caseLoading}>{icon} {label}</button>
-                ))}
+                {[{ key:"case", label:"📋 Full Case" },{ key:"whip", label:"🏁 Whip Speech" },{ key:"plan", label:"📄 Write a Plan" },{ key:"counterplan", label:"↩️ Counterplan" }].map(function(item) {
+                  return <button key={item.key} style={s.actionBtn} onClick={function() { handleCaseQuickAction(item.key); }} disabled={caseLoading}>{item.label}</button>;
+                })}
               </div>
-            </>
+            </div>
           )}
           {caseMsgs.length > 0 && (
             <div>
               <p style={s.sideLabel}>Export</p>
-              <button style={s.exportBtn} onClick={() => {
-                const content = caseMsgs.map(m=>`[${m.role.toUpperCase()}]\n${m.content}`).join("\n\n---\n\n");
-                const blob = new Blob([`RESOLUTION: ${caseRes}\nSIDE: ${caseSide?.toUpperCase()}\n\n${content}`],{type:"text/plain"});
-                const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`parli-case-${Date.now()}.txt`; a.click();
-              }}>⬇ Export .txt</button>
+              <button style={s.exportBtn} onClick={function() {
+                const content = caseMsgs.map(function(m) { return "[" + m.role.toUpperCase() + "]\n" + m.content; }).join("\n\n---\n\n");
+                const blob = new Blob(["RESOLUTION: " + caseRes + "\n\n" + content], { type:"text/plain" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "parli-case-" + Date.now() + ".txt";
+                a.click();
+              }}>{"⬇ Export .txt"}</button>
             </div>
           )}
         </aside>
-
         <main style={s.chat}>
           <div style={s.messages}>
-            {caseMsgs.length===0 && (
+            {caseMsgs.length === 0 && (
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", textAlign:"center", gap:8 }}>
-                <div style={{ fontSize:48 }}>⚖️</div>
+                <div style={{ fontSize:48 }}>{"⚖️"}</div>
                 <p style={{ fontSize:22, fontWeight:700, margin:0 }}>Ready to debate.</p>
                 <p style={{ fontSize:13, color:"#94a3b8", maxWidth:280, lineHeight:1.6, margin:0 }}>Set a resolution, pick your side, then generate a case.</p>
-                {!caseResSet && <p style={{ fontSize:13, color:"#4f46e5", fontWeight:600, margin:0 }}>← Start with a resolution</p>}
-                {caseResSet && !caseSide && <p style={{ fontSize:13, color:"#4f46e5", fontWeight:600, margin:0 }}>← Pick Government or Opposition</p>}
               </div>
             )}
-            {caseMsgs.map((msg,i) => (
-              <div key={i} style={msg.role==="user" ? s.msgWrapUser : s.msgWrapAsst}>
-                <div style={msg.role==="user" ? s.msgUser : s.msgAsst}>
-                  {msg.role==="assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
-                  {msg.role==="assistant" && i===caseMsgs.length-1 && !caseLoading && (
-                    <div style={s.msgActions}>
-                      <button style={s.smallBtn} onClick={() => setCaseFeedbackMode(i)}>✏ Request Revision</button>
-                      <button style={s.smallBtn} onClick={() => navigator.clipboard.writeText(msg.content)}>📋 Copy</button>
-                    </div>
-                  )}
+            {caseMsgs.map(function(msg, i) {
+              return (
+                <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
+                  <div style={msg.role === "user" ? s.msgUser : s.msgAsst}>
+                    {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
+                    {msg.role === "assistant" && i === caseMsgs.length - 1 && !caseLoading && (
+                      <div style={s.msgActions}>
+                        <button style={s.smallBtn} onClick={function() { setCaseFeedbackMode(i); }}>{"✏ Request Revision"}</button>
+                        <button style={s.smallBtn} onClick={function() { navigator.clipboard.writeText(msg.content); }}>{"📋 Copy"}</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {caseLoading && (
               <div style={s.msgWrapAsst}>
                 <div style={s.msgAsst}>
@@ -1053,31 +834,31 @@ export default function App() {
             )}
             <div ref={messagesEndRef} />
           </div>
-
-          {caseFeedbackMode!==null && (
+          {caseFeedbackMode !== null && (
             <div style={s.revBar}>
-              <div style={s.revLabel}>✏ Revision Request</div>
+              <div style={s.revLabel}>{"✏ Revision Request"}</div>
               <div style={s.revRow}>
-                <textarea autoFocus style={{...s.textarea,flex:1,marginBottom:0}} rows={2} placeholder="What should change?" value={caseFeedbackText} onChange={(e)=>setCaseFeedbackText(e.target.value)}
-                  onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(caseFeedbackText.trim())sendCaseMessage(`REVISION REQUEST: ${caseFeedbackText}`,true);}}}/>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  <button style={s.revBtnSend} onClick={()=>{if(caseFeedbackText.trim())sendCaseMessage(`REVISION REQUEST: ${caseFeedbackText}`,true);}} disabled={!caseFeedbackText.trim()}>Send</button>
-                  <button style={s.revBtnCancel} onClick={()=>{setCaseFeedbackMode(null);setCaseFeedbackText("");}}>Cancel</button>
+                <textarea autoFocus style={Object.assign({}, s.textarea, { flex:1, marginBottom:0 })} rows={2} placeholder="What should change?" value={caseFeedbackText} onChange={function(e) { setCaseFeedbackText(e.target.value); }}
+                  onKeyDown={function(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (caseFeedbackText.trim()) sendCaseMessage("REVISION REQUEST: " + caseFeedbackText, true); } }}
+                />
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  <button style={s.revBtnSend} onClick={function() { if (caseFeedbackText.trim()) sendCaseMessage("REVISION REQUEST: " + caseFeedbackText, true); }} disabled={!caseFeedbackText.trim()}>Send</button>
+                  <button style={s.revBtnCancel} onClick={function() { setCaseFeedbackMode(null); setCaseFeedbackText(""); }}>Cancel</button>
                 </div>
               </div>
             </div>
           )}
-
           <div style={s.inputBar}>
             <div style={s.inputRow}>
               <textarea style={s.inputTextarea} rows={2}
-                placeholder={!caseResSet?"Set a resolution to begin...":!caseSide?"Pick a side first...":"Ask anything..."}
-                value={caseInput} onChange={(e)=>setCaseInput(e.target.value)}
-                disabled={!caseResSet||!caseSide||caseLoading}
-                onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(caseInput.trim())sendCaseMessage(caseInput);}}}/>
-              <button style={!caseInput.trim()||!caseResSet||!caseSide||caseLoading?s.sendBtnDisabled:s.sendBtn}
-                onClick={()=>{if(caseInput.trim())sendCaseMessage(caseInput);}}
-                disabled={!caseInput.trim()||!caseResSet||!caseSide||caseLoading}>Send</button>
+                placeholder={!caseResSet ? "Set a resolution to begin..." : !caseSide ? "Pick a side first..." : "Ask anything..."}
+                value={caseInput} onChange={function(e) { setCaseInput(e.target.value); }}
+                disabled={!caseResSet || !caseSide || caseLoading}
+                onKeyDown={function(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (caseInput.trim()) sendCaseMessage(caseInput); } }}
+              />
+              <button style={!caseInput.trim() || !caseResSet || !caseSide || caseLoading ? s.sendBtnDisabled : s.sendBtn}
+                onClick={function() { if (caseInput.trim()) sendCaseMessage(caseInput); }}
+                disabled={!caseInput.trim() || !caseResSet || !caseSide || caseLoading}>Send</button>
             </div>
             <div style={s.inputHint}>Enter to send · Shift+Enter for new line</div>
           </div>
