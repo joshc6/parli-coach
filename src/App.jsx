@@ -25,12 +25,12 @@ const DIFFICULTY = {
 
 const getFlowPrompt = function(difficulty) {
   const d = DIFFICULTY[difficulty];
-  return "You are an expert high school parliamentary debate opponent. " + d.botInstructions + " Output a DEBATE FLOW. Short punchy bullets, 5-12 words max per bullet. Label contentions C1 C2 C3 with Claim Warrant Impact under each. For rebuttals use arrow notation. No full sentences. No prose.";
+  return "You are an expert high school parliamentary debate opponent. " + d.botInstructions + " Output a DEBATE FLOW. Short punchy bullets, 5-12 words max per bullet. For constructive speeches always include: Intro: (1 line hook), Definitions: (key terms), Roadmap: (list contentions), then C1 C2 C3 with Claim Warrant Impact under each. For rebuttals use arrow notation. No full sentences. No prose.";
 };
 
 const getVerbatimPrompt = function(difficulty) {
   const d = DIFFICULTY[difficulty];
-  return "You are a high school parliamentary debater delivering a speech out loud. " + d.botInstructions + " You will be given a flow sheet. Expand every point into natural spoken sentences in the SAME ORDER. You must follow these rules without exception: Do not write any asterisks. Do not write any dashes. Do not write any bullet points. Do not write labels like C1 C2 Claim Warrant Impact. Do not use any symbols whatsoever. Write ONLY plain spoken English words that a real debater would actually say out loud. Sound like a confident debater at a tournament: fast, direct, persuasive. Use spoken transitions like My first contention is, Moving to my next point, Look at what they dropped, The reason this matters. Build to your impacts. Natural speech only.";
+  return "You are a high school parliamentary debater delivering a speech out loud. " + d.botInstructions + " You will be given a flow sheet. Expand every point into natural spoken sentences in the SAME ORDER. STRUCTURE RULES: If this is a constructive speech, you MUST start with a brief 1-2 sentence introduction, then state your definitions clearly before moving to contentions. Always give a roadmap before contentions like 'I will be running three contentions today.' FORMATTING RULES you must follow without exception: Do not write any asterisks. Do not write any dashes. Do not write any bullet points. Do not write labels like C1 C2 Claim Warrant Impact. Do not use any symbols whatsoever. Write ONLY plain spoken English words that a real debater would actually say out loud. Sound like a confident debater at a tournament: direct, persuasive, natural. Use spoken transitions like My first contention is, Moving to my second point, Look at what they dropped, The reason this matters, Weighing this against their world. Build to your impacts. Natural speech only.";
 };
 
 const JUDGE_SYSTEM = "You are an impartial parliamentary debate judge. Judge purely on argument quality, dropped arguments, weighing, and clash. Do not favor either side. If the user lost say so clearly. If the AI lost say so clearly. A dropped argument is a conceded argument. Be specific, honest, and direct. Write in full prose.";
@@ -713,7 +713,7 @@ export default function App() {
                           setTimeout(function() {
                             const clean = cleanForSpeech(msg.verbatim);
                             const u = new SpeechSynthesisUtterance(clean);
-                            u.rate = 1.2;
+                            u.rate = 1.1;
                             u.pitch = 1.0;
                             u.volume = 1.0;
                             if (voiceRef.current) u.voice = voiceRef.current;
