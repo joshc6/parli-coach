@@ -189,18 +189,30 @@ function pickVoice() {
   return voices.length > 0 ? voices[0] : null;
 }
 
-function doSpeakText(text, onDone, voice) {
+function getVoiceReady() {
+  return new Promise(function(resolve) {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) { resolve(pickVoice()); return; }
+    window.speechSynthesis.onvoiceschanged = function() {
+      window.speechSynthesis.onvoiceschanged = null;
+      resolve(pickVoice());
+    };
+  });
+}
+
+function doSpeakText(text, onDone) {
   window.speechSynthesis.cancel();
   const clean = cleanForSpeech(text);
-  const utter = new SpeechSynthesisUtterance(clean);
-  utter.rate = 1.1;
-  utter.pitch = 1.0;
-  utter.volume = 1.0;
-  const v = voice || pickVoice();
-  if (v) utter.voice = v;
-  utter.onend = function() { if (onDone) onDone(); };
-  utter.onerror = function() { if (onDone) onDone(); };
-  window.speechSynthesis.speak(utter);
+  getVoiceReady().then(function(v) {
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.rate = 1.1;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    if (v) utter.voice = v;
+    utter.onend = function() { if (onDone) onDone(); };
+    utter.onerror = function() { if (onDone) onDone(); };
+    window.speechSynthesis.speak(utter);
+  });
 }
 
 function doStopSpeaking() {
@@ -704,13 +716,14 @@ export default function App() {
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
                           window.speechSynthesis.cancel();
                           const clean = cleanForSpeech(msg.verbatim);
-                          const u = new SpeechSynthesisUtterance(clean);
-                          u.rate = 1.1;
-                          u.pitch = 1.0;
-                          u.volume = 1.0;
-                          const v = voiceRef.current || pickVoice();
-                          if (v) u.voice = v;
-                          window.speechSynthesis.speak(u);
+                          getVoiceReady().then(function(v) {
+                            const u = new SpeechSynthesisUtterance(clean);
+                            u.rate = 1.1;
+                            u.pitch = 1.0;
+                            u.volume = 1.0;
+                            if (v) u.voice = v;
+                            window.speechSynthesis.speak(u);
+                          });
                         }}>{"▶ Play Speech"}</button>
                       )}
                     </div>
