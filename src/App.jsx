@@ -710,15 +710,15 @@ export default function App() {
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
                           window.speechSynthesis.cancel();
-                          const clean = cleanForSpeech(msg.verbatim);
-                          const u = new SpeechSynthesisUtterance(clean);
-                          u.rate = 1.2;
-                          u.pitch = 1.0;
-                          u.volume = 1.0;
-                          if (voiceRef.current) u.voice = voiceRef.current;
-                          u.onstart = function() { console.log("TTS started"); };
-                          u.onerror = function(e) { console.log("TTS error", e); };
-                          window.speechSynthesis.speak(u);
+                          setTimeout(function() {
+                            const clean = cleanForSpeech(msg.verbatim);
+                            const u = new SpeechSynthesisUtterance(clean);
+                            u.rate = 1.2;
+                            u.pitch = 1.0;
+                            u.volume = 1.0;
+                            if (voiceRef.current) u.voice = voiceRef.current;
+                            window.speechSynthesis.speak(u);
+                          }, 200);
                         }}>{"▶ Play Speech"}</button>
                       )}
                     </div>
