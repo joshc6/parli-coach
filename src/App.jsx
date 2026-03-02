@@ -247,6 +247,27 @@ function doStopSpeaking() {
   window.speechSynthesis.cancel();
 }
 
+function warmSpeech() {
+  try {
+    const u = new SpeechSynthesisUtterance("");
+    u.volume = 0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function warmSpeech() {
+  // Fire a silent utterance synchronously during the user gesture so Chrome
+  // marks this page as having an active speech context. Without this, speak()
+  // called after an async API call (which breaks the gesture chain) is blocked.
+  try {
+    const u = new SpeechSynthesisUtterance("");
+    u.volume = 0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
 const callAPI = async function(prompt, system) {
   const res = await fetch("/api/gemini", {
     method: "POST",
@@ -396,6 +417,7 @@ export default function App() {
   };
 
   const startRound = async function() {
+    warmSpeech();
     const res = setupResText.trim();
     const uSide = setupSide === "gov" ? "Affirmative" : "Negative";
     const bSide = setupSide === "gov" ? "Negative" : "Affirmative";
@@ -431,6 +453,7 @@ export default function App() {
   const handleUserSpeech = async function() {
     const userText = transcript.trim() || input.trim();
     if (!userText || loading || speaking) return;
+    warmSpeech();
     setInput("");
     setTranscript("");
     setInterim("");
