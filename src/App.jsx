@@ -440,14 +440,14 @@ export default function App() {
   const getInputLabel = function() {
     if (roundOver || loading) return null;
     if (userSide === "Government") {
-      if (stage === 0) return "YOUR SPEECH: Government Opening Constructive";
-      if (stage === 2) return "YOUR SPEECH: Government Rebuttal + Rebuild";
-      if (stage === 4) return "YOUR SPEECH: Government Rebuttal (Pre-Whip)";
-      if (stage === 6) return "YOUR SPEECH: Government Whip (Final)";
+      if (stage === 0) return "YOUR SPEECH: Aff 1 — Affirmative Constructive";
+      if (stage === 2) return "YOUR SPEECH: Aff 2 — Rebuttal + Rebuild";
+      if (stage === 4) return "YOUR SPEECH: Aff 2 — Rebuttal + Rebuild";
+      if (stage === 6) return "YOUR SPEECH: Aff 3 — Affirmative Whip";
     } else {
-      if (stage === 2) return "YOUR SPEECH: Opposition Constructive + Rebuttal";
-      if (stage === 4) return "YOUR SPEECH: Opposition Rebuttal + Rebuild";
-      if (stage === 6) return "YOUR SPEECH: Opposition Whip";
+      if (stage === 2) return "YOUR SPEECH: Neg 1 — Neg Constructive + Rebuttal";
+      if (stage === 4) return "YOUR SPEECH: Neg 2 — Rebuttal + Rebuild";
+      if (stage === 6) return "YOUR SPEECH: Neg 3 — Neg Whip";
     }
     return null;
   };
@@ -461,22 +461,22 @@ export default function App() {
   const getProgressSteps = function() {
     if (userSide === "Government") {
       return [
-        { label: "Gov Constructive", active: stage === 0, done: stage > 0 },
-        { label: "Opp Constructive+Rebuttal", active: stage === 1, done: stage > 1 },
-        { label: "Gov Rebuttal+Rebuild", active: stage === 2, done: stage > 2 },
-        { label: "Opp Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
-        { label: "Opp Whip", active: stage === 5, done: stage > 5 },
-        { label: "Gov Whip", active: stage === 6, done: stage > 6 },
+        { label: "Aff 1", active: stage === 0, done: stage > 0 },
+        { label: "Neg 1", active: stage === 1, done: stage > 1 },
+        { label: "Aff 2", active: stage === 2, done: stage > 2 },
+        { label: "Neg 2", active: stage === 3, done: stage > 3 },
+        { label: "Neg 3", active: stage === 5, done: stage > 5 },
+        { label: "Aff 3", active: stage === 6, done: stage > 6 },
         { label: "Judge", active: stage === 7, done: roundOver },
       ];
     }
     return [
-      { label: "Gov Constructive", active: stage === 1, done: stage > 1 },
-      { label: "Opp Constructive+Rebuttal", active: stage === 2, done: stage > 2 },
-      { label: "Gov Rebuttal+Rebuild", active: stage === 3, done: stage > 3 },
-      { label: "Opp Rebuttal+Rebuild", active: stage === 4, done: stage > 4 },
-      { label: "Opp Whip", active: stage === 6, done: stage > 6 },
-      { label: "Gov Whip", active: stage === 7, done: roundOver },
+      { label: "Aff 1", active: stage === 1, done: stage > 1 },
+      { label: "Neg 1", active: stage === 2, done: stage > 2 },
+      { label: "Aff 2", active: stage === 3, done: stage > 3 },
+      { label: "Neg 2", active: stage === 4, done: stage > 4 },
+      { label: "Neg 3", active: stage === 6, done: stage > 6 },
+      { label: "Aff 3", active: stage === 7, done: roundOver },
       { label: "Judge", active: stage === 7, done: roundOver },
     ];
   };
@@ -604,14 +604,14 @@ export default function App() {
         <div style={s.landing}>
           <div style={s.setupCard}>
             <p style={s.setupTitle}>{"⚔️ Full Round Practice"}</p>
-            <p style={s.setupSubtitle}>Pick your side and resolution. Gov always opens, Opp always responds first.</p>
+            <p style={s.setupSubtitle}>Pick your side and resolution. Aff always opens, Neg always responds first.</p>
             <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Your Side</span>
               <div style={s.sideGrid}>
-                <button style={setupSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setSetupSide("gov"); }}>GOV</button>
-                <button style={setupSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setSetupSide("opp"); }}>OPP</button>
+                <button style={setupSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setSetupSide("gov"); }}>AFF</button>
+                <button style={setupSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setSetupSide("opp"); }}>NEG</button>
               </div>
-              {setupSide && <div style={{ fontSize:11, color:"#94a3b8", marginTop:8, fontFamily:"monospace" }}>{setupSide === "gov" ? "You open. Bot plays Opposition." : "Bot opens as Government. You respond first."}</div>}
+              {setupSide && <div style={{ fontSize:11, color:"#94a3b8", marginTop:8, fontFamily:"monospace" }}>{setupSide === "gov" ? "You open. Bot plays Neg." : "Bot opens as Aff. You respond first."}</div>}
             </div>
             <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Difficulty</span>
@@ -660,7 +660,7 @@ export default function App() {
             <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
           </div>
           <div style={s.headerBadges}>
-            <span style={userSide === "Government" ? s.badgeGov : s.badgeOpp}>{userSide === "Government" ? "▲ GOV" : "▼ OPP"}</span>
+            <span style={userSide === "Government" ? s.badgeGov : s.badgeOpp}>{userSide === "Government" ? "▲ AFF" : "▼ NEG"}</span>
             {diff && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background: diff.bg, color: diff.color, border: "1px solid " + diff.border }}>{diff.label}</span>}
             <span style={s.badgePractice}>{"⚔ FULL ROUND"}</span>
             {speaking && <span style={s.badgeSpeaking}>{"🔊 Speaking"}</span>}
@@ -696,16 +696,16 @@ export default function App() {
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", gap:8, textAlign:"center" }}>
                   <div style={{ fontSize:36 }}>{"⚔️"}</div>
                   <p style={{ fontSize:16, fontWeight:700, margin:0 }}>Round starting...</p>
-                  {userSide === "Government" && <p style={{ fontSize:13, color:"#94a3b8", margin:0 }}>You open. Deliver your Government constructive below.</p>}
+                  {userSide === "Government" && <p style={{ fontSize:13, color:"#94a3b8", margin:0 }}>You open. Deliver your Aff 1 below.</p>}
                 </div>
               )}
               {messages.map(function(msg, i) {
                 return (
                   <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
                     <div style={msg.role === "user" ? s.msgUser : msg.type === "judge" ? s.msgAsstJudge : s.msgAsstOpponent}>
-                      {msg.role === "assistant" && msg.type === "opponent" && <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{"⚔ " + botSide}</div>}
-                      {msg.role === "assistant" && msg.type === "judge" && <div style={Object.assign({}, s.msgTag, { color:"#15803d" })}>{"🏛 Judges Decision"}</div>}
-                      {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{"🎤 " + userSide}</div>}
+                      {msg.role === "assistant" && msg.type === "opponent" && <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Opposition" ? "⚔ Neg" : "⚔ Aff"}</div>}
+                      {msg.role === "assistant" && msg.type === "judge" && <div style={Object.assign({}, s.msgTag, { color:"#15803d" })}>{"🏛 Judge's Decision"}</div>}
+                      {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{userSide === "Government" ? "🎤 Aff" : "🎤 Neg"}</div>}
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
@@ -728,7 +728,7 @@ export default function App() {
               {loading && (
                 <div style={s.msgWrapAsst}>
                   <div style={s.msgAsstOpponent}>
-                    <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{"⚔ " + botSide}</div>
+                    <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Opposition" ? "⚔ Neg" : "⚔ Aff"}</div>
                     <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Preparing speech</span>
                     <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                   </div>
@@ -770,7 +770,7 @@ export default function App() {
           <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
         </div>
         <div style={s.headerBadges}>
-          {caseResSet && caseSide && <span style={caseSide === "gov" ? s.badgeGov : s.badgeOpp}>{caseSide === "gov" ? "▲ GOV" : "▼ OPP"}</span>}
+          {caseResSet && caseSide && <span style={caseSide === "gov" ? s.badgeGov : s.badgeOpp}>{caseSide === "gov" ? "▲ AFF" : "▼ NEG"}</span>}
           <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>{"← Home"}</button>
         </div>
       </header>
@@ -788,8 +788,8 @@ export default function App() {
             <div>
               <p style={s.sideLabel}>Side</p>
               <div style={s.sideGrid}>
-                <button style={caseSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setCaseSide("gov"); }}>GOV</button>
-                <button style={caseSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setCaseSide("opp"); }}>OPP</button>
+                <button style={caseSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setCaseSide("gov"); }}>AFF</button>
+                <button style={caseSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setCaseSide("opp"); }}>NEG</button>
               </div>
             </div>
           )}
@@ -798,9 +798,9 @@ export default function App() {
               <div>
                 <p style={s.sideLabel}>Speech</p>
                 <select style={s.select} value={caseSpeechType} onChange={function(e) { setCaseSpeechType(e.target.value); }}>
-                  <option value="constructive">{caseSide === "gov" ? "PM Constructive" : "LO Constructive"}</option>
-                  <option value="extension">{caseSide === "gov" ? "MG Extension" : "MO Extension"}</option>
-                  <option value="whip">{caseSide === "gov" ? "Gov Whip" : "Opp Whip"}</option>
+                  <option value="constructive">{caseSide === "gov" ? "Aff 1 Constructive" : "Neg 1 Constructive"}</option>
+                  <option value="extension">{caseSide === "gov" ? "Aff 2 Extension" : "Neg 2 Extension"}</option>
+                  <option value="whip">{caseSide === "gov" ? "Aff 3 Whip" : "Neg 3 Whip"}</option>
                 </select>
               </div>
               <div style={{ marginTop:16 }}>
