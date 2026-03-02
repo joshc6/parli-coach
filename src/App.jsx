@@ -248,15 +248,6 @@ function doStopSpeaking() {
 }
 
 function warmSpeech() {
-  try {
-    const u = new SpeechSynthesisUtterance("");
-    u.volume = 0;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch (e) {}
-}
-
-function warmSpeech() {
   // Fire a silent utterance synchronously during the user gesture so Chrome
   // marks this page as having an active speech context. Without this, speak()
   // called after an async API call (which breaks the gesture chain) is blocked.
