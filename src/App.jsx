@@ -192,22 +192,15 @@ function pickVoice() {
 function doSpeakText(text, onDone, voice) {
   window.speechSynthesis.cancel();
   const clean = cleanForSpeech(text);
-  setTimeout(function() {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.rate = 1.2;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
-    if (voice) {
-      utter.voice = voice;
-    } else {
-      const v = pickVoice();
-      if (v) utter.voice = v;
-    }
-    utter.onend = function() { if (onDone) onDone(); };
-    utter.onerror = function() { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utter);
-  }, 400);
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.rate = 1.1;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+  const v = voice || pickVoice();
+  if (v) utter.voice = v;
+  utter.onend = function() { if (onDone) onDone(); };
+  utter.onerror = function() { if (onDone) onDone(); };
+  window.speechSynthesis.speak(utter);
 }
 
 function doStopSpeaking() {
@@ -364,8 +357,8 @@ export default function App() {
 
   const startRound = async function() {
     const res = setupResText.trim();
-    const uSide = setupSide === "gov" ? "Government" : "Opposition";
-    const bSide = setupSide === "gov" ? "Opposition" : "Government";
+    const uSide = setupSide === "gov" ? "Affirmative" : "Negative";
+    const bSide = setupSide === "gov" ? "Negative" : "Affirmative";
     setDifficulty(setupDifficulty);
     setResolution(res);
     setUserSide(uSide);
@@ -402,7 +395,7 @@ export default function App() {
     setTranscript("");
     setInterim("");
     setMessages(function(prev) { return prev.concat([{ role: "user", content: userText, type: "user" }]); });
-    if (userSide === "Government") {
+    if (userSide === "Affirmative") {
       if (stage === 0) {
         setStage(1);
         await botSpeak(ROUND_PROMPTS.opp_rebuts_and_constructs(resolution, userText));
@@ -413,11 +406,11 @@ export default function App() {
         setStage(4);
       } else if (stage === 4) {
         setStage(5);
-        await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Opposition", userText));
+        await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Negative", userText));
         setStage(6);
       } else if (stage === 6) {
         setStage(7);
-        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Government", "Opposition", userText, difficulty), "judge", true);
+        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Affirmative", "Negative", userText, difficulty), "judge", true);
         setRoundOver(true);
       }
     } else {
@@ -429,9 +422,9 @@ export default function App() {
         setStage(6);
       } else if (stage === 6) {
         setStage(5);
-        await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Government", userText));
+        await botSpeak(ROUND_PROMPTS.bot_whip(resolution, "Affirmative", userText));
         setStage(7);
-        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Opposition", "Government", userText, difficulty), "judge", true);
+        await botSpeak(ROUND_PROMPTS.judge_critique(resolution, "Negative", "Affirmative", userText, difficulty), "judge", true);
         setRoundOver(true);
       }
     }
@@ -439,7 +432,7 @@ export default function App() {
 
   const getInputLabel = function() {
     if (roundOver || loading) return null;
-    if (userSide === "Government") {
+    if (userSide === "Affirmative") {
       if (stage === 0) return "YOUR SPEECH: Aff 1 — Affirmative Constructive";
       if (stage === 2) return "YOUR SPEECH: Aff 2 — Rebuttal + Rebuild";
       if (stage === 4) return "YOUR SPEECH: Aff 2 — Rebuttal + Rebuild";
@@ -454,12 +447,12 @@ export default function App() {
 
   const isUserTurn = function() {
     if (roundOver || loading || speaking) return false;
-    if (userSide === "Government") return stage === 0 || stage === 2 || stage === 4 || stage === 6;
+    if (userSide === "Affirmative") return stage === 0 || stage === 2 || stage === 4 || stage === 6;
     return stage === 2 || stage === 4 || stage === 6;
   };
 
   const getProgressSteps = function() {
-    if (userSide === "Government") {
+    if (userSide === "Affirmative") {
       return [
         { label: "Aff 1", active: stage === 0, done: stage > 0 },
         { label: "Neg 1", active: stage === 1, done: stage > 1 },
@@ -513,7 +506,7 @@ export default function App() {
     setCaseFeedbackText("");
     setCaseLoading(true);
     try {
-      const context = "RESOLUTION: " + caseRes + "\nSIDE: " + (caseSide === "gov" ? "Government" : "Opposition") + "\nSPEECH TYPE: " + caseSpeechType + "\n\n";
+      const context = "RESOLUTION: " + caseRes + "\nSIDE: " + (caseSide === "gov" ? "Affirmative" : "Negative") + "\nSPEECH TYPE: " + caseSpeechType + "\n\n";
       const apiMsgs = newMsgs.map(function(m, i) { return { role: m.role, content: i === 0 ? context + m.content : m.content }; });
       const res = await fetch("/api/gemini", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -529,9 +522,9 @@ export default function App() {
 
   const handleCaseQuickAction = function(action) {
     if (!caseResSet || !caseSide) return;
-    const side = caseSide === "gov" ? "Government" : "Opposition";
+    const side = caseSide === "gov" ? "Affirmative" : "Negative";
     const prompts = {
-      case: "Generate a full " + (side === "Government" ? "Prime Minister Government" : "Leader of Opposition") + " constructive case. Complete 8-minute case with definitions, intro, and all contentions fully fleshed out. Include a creative third contention if possible.",
+      case: "Generate a full " + side + " constructive case. Complete 8-minute case with definitions, intro, and all contentions fully fleshed out. Include a creative third contention if possible.",
       whip: "Generate a " + side + " Whip speech 5 minutes. Focus on weighing, voters, comparing the two worlds. No new arguments.",
       plan: "Write a policy plan for the " + side + " side. Include: Plantext, Actor, Timeframe, and Cost/Mechanism.",
       counterplan: "Write a counterplan for the " + side + " side. Include: Plantext, Net Benefit, Actor, Timeframe, and Cost/Mechanism.",
@@ -660,7 +653,7 @@ export default function App() {
             <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
           </div>
           <div style={s.headerBadges}>
-            <span style={userSide === "Government" ? s.badgeGov : s.badgeOpp}>{userSide === "Government" ? "▲ AFF" : "▼ NEG"}</span>
+            <span style={userSide === "Affirmative" ? s.badgeGov : s.badgeOpp}>{userSide === "Affirmative" ? "▲ AFF" : "▼ NEG"}</span>
             {diff && <span style={{ padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background: diff.bg, color: diff.color, border: "1px solid " + diff.border }}>{diff.label}</span>}
             <span style={s.badgePractice}>{"⚔ FULL ROUND"}</span>
             {speaking && <span style={s.badgeSpeaking}>{"🔊 Speaking"}</span>}
@@ -696,29 +689,28 @@ export default function App() {
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", gap:8, textAlign:"center" }}>
                   <div style={{ fontSize:36 }}>{"⚔️"}</div>
                   <p style={{ fontSize:16, fontWeight:700, margin:0 }}>Round starting...</p>
-                  {userSide === "Government" && <p style={{ fontSize:13, color:"#94a3b8", margin:0 }}>You open. Deliver your Aff 1 below.</p>}
+                  {userSide === "Affirmative" && <p style={{ fontSize:13, color:"#94a3b8", margin:0 }}>You open. Deliver your Aff 1 below.</p>}
                 </div>
               )}
               {messages.map(function(msg, i) {
                 return (
                   <div key={i} style={msg.role === "user" ? s.msgWrapUser : s.msgWrapAsst}>
                     <div style={msg.role === "user" ? s.msgUser : msg.type === "judge" ? s.msgAsstJudge : s.msgAsstOpponent}>
-                      {msg.role === "assistant" && msg.type === "opponent" && <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Opposition" ? "⚔ Neg" : "⚔ Aff"}</div>}
+                      {msg.role === "assistant" && msg.type === "opponent" && <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Negative" ? "⚔ Neg" : "⚔ Aff"}</div>}
                       {msg.role === "assistant" && msg.type === "judge" && <div style={Object.assign({}, s.msgTag, { color:"#15803d" })}>{"🏛 Judge's Decision"}</div>}
-                      {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{userSide === "Government" ? "🎤 Aff" : "🎤 Neg"}</div>}
+                      {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{userSide === "Affirmative" ? "🎤 Aff" : "🎤 Neg"}</div>}
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
                           window.speechSynthesis.cancel();
-                          setTimeout(function() {
-                            const clean = cleanForSpeech(msg.verbatim);
-                            const u = new SpeechSynthesisUtterance(clean);
-                            u.rate = 1.1;
-                            u.pitch = 1.0;
-                            u.volume = 1.0;
-                            if (voiceRef.current) u.voice = voiceRef.current;
-                            window.speechSynthesis.speak(u);
-                          }, 200);
+                          const clean = cleanForSpeech(msg.verbatim);
+                          const u = new SpeechSynthesisUtterance(clean);
+                          u.rate = 1.1;
+                          u.pitch = 1.0;
+                          u.volume = 1.0;
+                          const v = voiceRef.current || pickVoice();
+                          if (v) u.voice = v;
+                          window.speechSynthesis.speak(u);
                         }}>{"▶ Play Speech"}</button>
                       )}
                     </div>
@@ -728,7 +720,7 @@ export default function App() {
               {loading && (
                 <div style={s.msgWrapAsst}>
                   <div style={s.msgAsstOpponent}>
-                    <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Opposition" ? "⚔ Neg" : "⚔ Aff"}</div>
+                    <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Negative" ? "⚔ Neg" : "⚔ Aff"}</div>
                     <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Preparing speech</span>
                     <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                   </div>
