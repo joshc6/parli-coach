@@ -200,8 +200,36 @@ function getVoiceReady() {
   });
 }
 
-function doSpeakText(text, onDone) {
+function speakWithResume(utter) {
+  // Chrome bug: after page reload the synthesis engine is paused/stuck.
+  // cancel() + resume() kicks it back into a speaking state.
   window.speechSynthesis.cancel();
+  window.speechSynthesis.resume();
+  window.speechSynthesis.speak(utter);
+  // Chrome also silently pauses long utterances ~15s. This keepalive
+  // interval calls resume() every 10s to prevent that.
+  const keepalive = setInterval(function() {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.resume();
+    } else {
+      clearInterval(keepalive);
+    }
+  }, 10000);
+  utter.onend = function(origOnEnd) {
+    return function(e) {
+      clearInterval(keepalive);
+      if (origOnEnd) origOnEnd(e);
+    };
+  }(utter.onend);
+  utter.onerror = function(origOnError) {
+    return function(e) {
+      clearInterval(keepalive);
+      if (origOnError) origOnError(e);
+    };
+  }(utter.onerror);
+}
+
+function doSpeakText(text, onDone) {
   const clean = cleanForSpeech(text);
   getVoiceReady().then(function(v) {
     const utter = new SpeechSynthesisUtterance(clean);
@@ -211,7 +239,7 @@ function doSpeakText(text, onDone) {
     if (v) utter.voice = v;
     utter.onend = function() { if (onDone) onDone(); };
     utter.onerror = function() { if (onDone) onDone(); };
-    window.speechSynthesis.speak(utter);
+    speakWithResume(utter);
   });
 }
 
@@ -714,7 +742,6 @@ export default function App() {
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
-                          window.speechSynthesis.cancel();
                           const clean = cleanForSpeech(msg.verbatim);
                           getVoiceReady().then(function(v) {
                             const u = new SpeechSynthesisUtterance(clean);
@@ -722,7 +749,7 @@ export default function App() {
                             u.pitch = 1.0;
                             u.volume = 1.0;
                             if (v) u.voice = v;
-                            window.speechSynthesis.speak(u);
+                            speakWithResume(u);
                           });
                         }}>{"▶ Play Speech"}</button>
                       )}
