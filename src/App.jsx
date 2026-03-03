@@ -172,87 +172,85 @@ function cleanForSpeech(text) {
   return result.trim();
 }
 
-function pickVoice() {
-  const voices = window.speechSynthesis.getVoices();
-  for (let i = 0; i < voices.length; i++) {
-    if (voices[i].name === "Google US English") return voices[i];
+// ── TTS ──────────────────────────────────────────────────────────────────────
+// Uses a hidden <audio> element fed by the Web Speech API's synthesis.
+// Approach: chunk text if needed, always pick best available English voice,
+// use a module-level currentUtterance ref so cancel works reliably.
+
+var _ttsVoice = null;
+var _ttsSpeaking = false;
+
+function _loadVoice() {
+  var voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+  // Prefer Google US English, then any Google en, then any en-US, then first
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].name === "Google US English") { _ttsVoice = voices[i]; return; }
   }
-  for (let i = 0; i < voices.length; i++) {
-    if (voices[i].name.indexOf("Google") !== -1 && voices[i].lang.indexOf("en") === 0) return voices[i];
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].name.indexOf("Google") !== -1 && voices[i].lang.indexOf("en") === 0) { _ttsVoice = voices[i]; return; }
   }
-  for (let i = 0; i < voices.length; i++) {
-    if (voices[i].name === "Alex" || voices[i].name === "Samantha") return voices[i];
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].lang === "en-US") { _ttsVoice = voices[i]; return; }
   }
-  for (let i = 0; i < voices.length; i++) {
-    if (voices[i].lang === "en-US") return voices[i];
-  }
-  return voices.length > 0 ? voices[0] : null;
+  _ttsVoice = voices[0];
 }
 
-function getVoiceReady() {
-  return new Promise(function(resolve) {
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) { resolve(pickVoice()); return; }
-    window.speechSynthesis.onvoiceschanged = function() {
-      window.speechSynthesis.onvoiceschanged = null;
-      resolve(pickVoice());
-    };
-  });
+if (typeof window !== "undefined") {
+  window.speechSynthesis.onvoiceschanged = _loadVoice;
+  _loadVoice();
 }
-function pickVoiceSync() {
-  // Synchronous voice picker — safe to call directly inside a click handler.
-  // Prefers Google US English, falls back to any local English voice.
-  const voices = window.speechSynthesis.getVoices();
-  for (var i = 0; i < voices.length; i++) { if (voices[i].name === "Google US English") return voices[i]; }
-  for (var i = 0; i < voices.length; i++) { if (voices[i].name.indexOf("Google") !== -1 && voices[i].lang.indexOf("en") === 0) return voices[i]; }
-  for (var i = 0; i < voices.length; i++) { if (voices[i].localService && voices[i].lang.indexOf("en") === 0) return voices[i]; }
-  for (var i = 0; i < voices.length; i++) { if (voices[i].lang === "en-US") return voices[i]; }
-  return voices.length > 0 ? voices[0] : null;
-}
-function speakWithResume(utter) {
-  if (window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel();
-  }
-  window.speechSynthesis.speak(utter);
-  var keepalive = setInterval(function() {
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    } else {
-      clearInterval(keepalive);
-    }
-  }, 10000);
-  var origEnd = utter.onend;
-  var origErr = utter.onerror;
-  utter.onend = function(e) { clearInterval(keepalive); if (origEnd) origEnd(e); };
-  utter.onerror = function(e) { clearInterval(keepalive); if (origErr) origErr(e); };
-}
+
 function doSpeakText(text, onDone) {
-  const clean = cleanForSpeech(text);
-  getVoiceReady().then(function(v) {
-    const utter = new SpeechSynthesisUtterance(clean);
+  var synth = window.speechSynthesis;
+  var clean = cleanForSpeech(text);
+
+  // Always cancel + small pause before speaking — the only reliable way
+  // to reset Chrome's synthesis engine between calls
+  synth.cancel();
+
+  var doSpeak = function() {
+    // Re-check voice in case it loaded after page init
+    if (!_ttsVoice) _loadVoice();
+
+    var utter = new SpeechSynthesisUtterance(clean);
     utter.rate = 1.1;
     utter.pitch = 1.0;
     utter.volume = 1.0;
-    if (v) utter.voice = v;
-    utter.onend = function() { if (onDone) onDone(); };
-    utter.onerror = function() { if (onDone) onDone(); };
-    speakWithResume(utter);
-  });
+    if (_ttsVoice) utter.voice = _ttsVoice;
+
+    _ttsSpeaking = true;
+
+    // Keepalive: Chrome pauses long utterances after ~15s
+    var keepalive = setInterval(function() {
+      if (synth.speaking) { synth.resume(); }
+      else { clearInterval(keepalive); }
+    }, 10000);
+
+    utter.onend = function() {
+      clearInterval(keepalive);
+      _ttsSpeaking = false;
+      if (onDone) onDone();
+    };
+    utter.onerror = function() {
+      clearInterval(keepalive);
+      _ttsSpeaking = false;
+      if (onDone) onDone();
+    };
+
+    synth.speak(utter);
+  };
+
+  // 150ms gives cancel() time to fully flush the queue before next speak
+  setTimeout(doSpeak, 150);
 }
 
 function doStopSpeaking() {
   window.speechSynthesis.cancel();
+  _ttsSpeaking = false;
 }
 
-function warmSpeech() {
-  try {
-    const u = new SpeechSynthesisUtterance("");
-    u.volume = 0;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch (e) {}
-}
+
 const callAPI = async function(prompt, system) {
   const res = await fetch("/api/gemini", {
     method: "POST",
@@ -402,7 +400,6 @@ export default function App() {
   };
 
   const startRound = async function() {
-    warmSpeech();
     const res = setupResText.trim();
     const uSide = setupSide === "gov" ? "Affirmative" : "Negative";
     const bSide = setupSide === "gov" ? "Negative" : "Affirmative";
@@ -438,7 +435,6 @@ export default function App() {
   const handleUserSpeech = async function() {
     const userText = transcript.trim() || input.trim();
     if (!userText || loading || speaking) return;
-    warmSpeech();
     setInput("");
     setTranscript("");
     setInterim("");
@@ -750,22 +746,7 @@ export default function App() {
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
-                          if (window.speechSynthesis.speaking) {
-                            window.speechSynthesis.cancel();
-                            setSpeaking(false);
-                            return;
-                          }
-                          const v = pickVoiceSync();
-                          const clean = cleanForSpeech(msg.verbatim);
-                          const u = new SpeechSynthesisUtterance(clean);
-                          u.rate = 1.1;
-                          u.pitch = 1.0;
-                          u.volume = 1.0;
-                          if (v) u.voice = v;
-                          u.onend = function() { setSpeaking(false); };
-                          u.onerror = function() { setSpeaking(false); };
-                          setSpeaking(true);
-                          speakWithResume(u);
+                          doSpeakText(msg.verbatim);
                         }}>{"▶ Play Speech"}</button>
                       )}
                     </div>
@@ -939,6 +920,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
