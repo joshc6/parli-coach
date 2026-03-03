@@ -201,25 +201,29 @@ function getVoiceReady() {
 }
 
 function speakWithResume(utter) {
+  // Cancel any currently playing speech, then immediately speak.
+  // Using pause/resume on the keepalive interval avoids the Chrome 15s silence bug.
   window.speechSynthesis.cancel();
-  // Small timeout lets cancel() fully flush before speaking.
-  // This is the only setTimeout we keep — it fixes the stuck-after-first-play bug.
-  setTimeout(function() {
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(utter);
-    // Keepalive: Chrome silently pauses utterances longer than ~15s
-    var keepalive = setInterval(function() {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.resume();
-      } else {
-        clearInterval(keepalive);
-      }
-    }, 10000);
-    var origEnd = utter.onend;
-    var origErr = utter.onerror;
-    utter.onend = function(e) { clearInterval(keepalive); if (origEnd) origEnd(e); };
-    utter.onerror = function(e) { clearInterval(keepalive); if (origErr) origErr(e); };
-  }, 50);
+  window.speechSynthesis.speak(utter);
+  // Keepalive: Chrome silently pauses long utterances after ~15s.
+  var keepalive = setInterval(function() {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    } else {
+      clearInterval(keepalive);
+    }
+  }, 10000);
+  var origEnd = utter.onend;
+  var origErr = utter.onerror;
+  utter.onend = function(e) {
+    clearInterval(keepalive);
+    if (origEnd) origEnd(e);
+  };
+  utter.onerror = function(e) {
+    clearInterval(keepalive);
+    if (origErr) origErr(e);
+  };
 }
 
 function doSpeakText(text, onDone) {
@@ -248,19 +252,6 @@ function warmSpeech() {
     window.speechSynthesis.speak(u);
   } catch (e) {}
 }
-
-function warmSpeech() {
-  // Fire a silent utterance synchronously during the user gesture so Chrome
-  // marks this page as having an active speech context. Without this, speak()
-  // called after an async API call (which breaks the gesture chain) is blocked.
-  try {
-    const u = new SpeechSynthesisUtterance("");
-    u.volume = 0;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch (e) {}
-}
-
 const callAPI = async function(prompt, system) {
   const res = await fetch("/api/gemini", {
     method: "POST",
@@ -758,6 +749,7 @@ export default function App() {
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
+                          warmSpeech();
                           const clean = cleanForSpeech(msg.verbatim);
                           getVoiceReady().then(function(v) {
                             const u = new SpeechSynthesisUtterance(clean);
@@ -765,6 +757,9 @@ export default function App() {
                             u.pitch = 1.0;
                             u.volume = 1.0;
                             if (v) u.voice = v;
+                            u.onend = function() { setSpeaking(false); };
+                            u.onerror = function() { setSpeaking(false); };
+                            setSpeaking(true);
                             speakWithResume(u);
                           });
                         }}>{"▶ Play Speech"}</button>
@@ -940,3 +935,4 @@ export default function App() {
     </div>
   );
 }
+
