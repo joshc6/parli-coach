@@ -199,14 +199,21 @@ function getVoiceReady() {
     };
   });
 }
-
+function pickVoiceSync() {
+  // Synchronous voice picker — safe to call directly inside a click handler.
+  // Prefers Google US English, falls back to any local English voice.
+  const voices = window.speechSynthesis.getVoices();
+  for (var i = 0; i < voices.length; i++) { if (voices[i].name === "Google US English") return voices[i]; }
+  for (var i = 0; i < voices.length; i++) { if (voices[i].name.indexOf("Google") !== -1 && voices[i].lang.indexOf("en") === 0) return voices[i]; }
+  for (var i = 0; i < voices.length; i++) { if (voices[i].localService && voices[i].lang.indexOf("en") === 0) return voices[i]; }
+  for (var i = 0; i < voices.length; i++) { if (voices[i].lang === "en-US") return voices[i]; }
+  return voices.length > 0 ? voices[0] : null;
+}
 function speakWithResume(utter) {
-  // Only cancel if something is currently speaking, to avoid interrupting ourselves.
   if (window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
   }
   window.speechSynthesis.speak(utter);
-  // Keepalive: Chrome silently pauses long utterances after ~15s.
   var keepalive = setInterval(function() {
     if (window.speechSynthesis.speaking) {
       window.speechSynthesis.pause();
@@ -217,14 +224,8 @@ function speakWithResume(utter) {
   }, 10000);
   var origEnd = utter.onend;
   var origErr = utter.onerror;
-  utter.onend = function(e) {
-    clearInterval(keepalive);
-    if (origEnd) origEnd(e);
-  };
-  utter.onerror = function(e) {
-    clearInterval(keepalive);
-    if (origErr) origErr(e);
-  };
+  utter.onend = function(e) { clearInterval(keepalive); if (origEnd) origEnd(e); };
+  utter.onerror = function(e) { clearInterval(keepalive); if (origErr) origErr(e); };
 }
 function doSpeakText(text, onDone) {
   const clean = cleanForSpeech(text);
@@ -754,18 +755,17 @@ export default function App() {
                             setSpeaking(false);
                             return;
                           }
-                          getVoiceReady().then(function(v) {
-                            const clean = cleanForSpeech(msg.verbatim);
-                            const u = new SpeechSynthesisUtterance(clean);
-                            u.rate = 1.1;
-                            u.pitch = 1.0;
-                            u.volume = 1.0;
-                            if (v) u.voice = v;
-                            u.onend = function() { setSpeaking(false); };
-                            u.onerror = function() { setSpeaking(false); };
-                            setSpeaking(true);
-                            speakWithResume(u);
-                          });
+                          const v = pickVoiceSync();
+                          const clean = cleanForSpeech(msg.verbatim);
+                          const u = new SpeechSynthesisUtterance(clean);
+                          u.rate = 1.1;
+                          u.pitch = 1.0;
+                          u.volume = 1.0;
+                          if (v) u.voice = v;
+                          u.onend = function() { setSpeaking(false); };
+                          u.onerror = function() { setSpeaking(false); };
+                          setSpeaking(true);
+                          speakWithResume(u);
                         }}>{"▶ Play Speech"}</button>
                       )}
                     </div>
@@ -939,5 +939,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
