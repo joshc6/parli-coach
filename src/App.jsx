@@ -201,32 +201,25 @@ function getVoiceReady() {
 }
 
 function speakWithResume(utter) {
-  // Chrome bug: after page reload the synthesis engine is paused/stuck.
-  // cancel() + resume() kicks it back into a speaking state.
   window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.speechSynthesis.speak(utter);
-  // Chrome also silently pauses long utterances ~15s. This keepalive
-  // interval calls resume() every 10s to prevent that.
-  const keepalive = setInterval(function() {
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.resume();
-    } else {
-      clearInterval(keepalive);
-    }
-  }, 10000);
-  utter.onend = function(origOnEnd) {
-    return function(e) {
-      clearInterval(keepalive);
-      if (origOnEnd) origOnEnd(e);
-    };
-  }(utter.onend);
-  utter.onerror = function(origOnError) {
-    return function(e) {
-      clearInterval(keepalive);
-      if (origOnError) origOnError(e);
-    };
-  }(utter.onerror);
+  // Small timeout lets cancel() fully flush before speaking.
+  // This is the only setTimeout we keep — it fixes the stuck-after-first-play bug.
+  setTimeout(function() {
+    window.speechSynthesis.resume();
+    window.speechSynthesis.speak(utter);
+    // Keepalive: Chrome silently pauses utterances longer than ~15s
+    var keepalive = setInterval(function() {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.resume();
+      } else {
+        clearInterval(keepalive);
+      }
+    }, 10000);
+    var origEnd = utter.onend;
+    var origErr = utter.onerror;
+    utter.onend = function(e) { clearInterval(keepalive); if (origEnd) origEnd(e); };
+    utter.onerror = function(e) { clearInterval(keepalive); if (origErr) origErr(e); };
+  }, 50);
 }
 
 function doSpeakText(text, onDone) {
@@ -245,6 +238,15 @@ function doSpeakText(text, onDone) {
 
 function doStopSpeaking() {
   window.speechSynthesis.cancel();
+}
+
+function warmSpeech() {
+  try {
+    const u = new SpeechSynthesisUtterance("");
+    u.volume = 0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
 }
 
 function warmSpeech() {
