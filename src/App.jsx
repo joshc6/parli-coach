@@ -201,9 +201,10 @@ function getVoiceReady() {
 }
 
 function speakWithResume(utter) {
-  // Cancel any currently playing speech, then immediately speak.
-  // Using pause/resume on the keepalive interval avoids the Chrome 15s silence bug.
-  window.speechSynthesis.cancel();
+  // Only cancel if something is currently speaking, to avoid interrupting ourselves.
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
   window.speechSynthesis.speak(utter);
   // Keepalive: Chrome silently pauses long utterances after ~15s.
   var keepalive = setInterval(function() {
@@ -225,7 +226,6 @@ function speakWithResume(utter) {
     if (origErr) origErr(e);
   };
 }
-
 function doSpeakText(text, onDone) {
   const clean = cleanForSpeech(text);
   getVoiceReady().then(function(v) {
@@ -749,9 +749,13 @@ export default function App() {
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
                         <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
-                          warmSpeech();
-                          const clean = cleanForSpeech(msg.verbatim);
+                          if (window.speechSynthesis.speaking) {
+                            window.speechSynthesis.cancel();
+                            setSpeaking(false);
+                            return;
+                          }
                           getVoiceReady().then(function(v) {
+                            const clean = cleanForSpeech(msg.verbatim);
                             const u = new SpeechSynthesisUtterance(clean);
                             u.rate = 1.1;
                             u.pitch = 1.0;
@@ -935,4 +939,5 @@ export default function App() {
     </div>
   );
 }
+
 
