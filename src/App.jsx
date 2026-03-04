@@ -59,307 +59,83 @@ const ROUND_PROMPTS = {
   },
 };
 
-// ─── RefractWeb-inspired dark design system ───────────────────────────────────
-// Near-black bg, off-white text, hairline borders, aggressive uppercase type
-// Fonts: DM Sans (headings) + DM Mono (labels/monospace)
-
-const RF = {
-  bg:       "#0c0d0f",
-  bgSurf:   "#141518",
-  bgSurf2:  "#1a1b1f",
-  bgInput:  "#111214",
-  fg:       "#f0f0ee",
-  fgMuted:  "rgba(240,240,238,0.55)",
-  fgDim:    "rgba(240,240,238,0.25)",
-  hairline: "rgba(240,240,238,0.08)",
-  hairlineHov: "rgba(240,240,238,0.18)",
-  accent:   "#e8e0d0",
-  affLine:  "rgba(96,165,250,0.7)",
-  negLine:  "rgba(251,113,133,0.7)",
-  judgeGlow:"rgba(74,222,128,0.12)",
-  font:     "'DM Sans', sans-serif",
-  mono:     "'DM Mono', monospace",
-};
-
-const GFONTS = "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');";
-
-const GLOBAL_CSS = GFONTS + `
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:${RF.bg};color:${RF.fg};font-family:${RF.font};-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:${RF.hairlineHov};border-radius:2px}
-textarea,input,select{font-family:${RF.font};outline:none}
-textarea:focus,input:focus,select:focus{border-color:rgba(240,240,238,0.3)!important}
-button{font-family:${RF.font};cursor:pointer}
-@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
-`;
-
 const s = {
-  // ── App shell
-  app: { display:"flex", flexDirection:"column", height:"100vh", fontFamily:RF.font, background:RF.bg, color:RF.fg, margin:0 },
-
-  // ── Header
-  header: {
-    background:RF.bg, borderBottom:"1px solid "+RF.hairline,
-    padding:"0 28px", height:52, display:"flex", alignItems:"center",
-    justifyContent:"space-between", flexShrink:0,
-  },
-  headerLeft: { display:"flex", alignItems:"center", gap:10 },
-  logo: {
-    width:28, height:28, borderRadius:6,
-    border:"1px solid "+RF.hairlineHov,
-    display:"flex", alignItems:"center", justifyContent:"center",
-    color:RF.fg, fontSize:14,
-  },
-  headerTitle: { margin:0, fontSize:13, fontWeight:600, letterSpacing:"0.01em", color:RF.fg },
-  headerSub: { margin:0, fontSize:10, color:RF.fgMuted, fontFamily:RF.mono, letterSpacing:"0.08em", textTransform:"uppercase" },
+  app: { display:"flex", flexDirection:"column", height:"100vh", fontFamily:"Georgia, serif", background:"#f8fafc", color:"#1e293b", margin:0 },
+  header: { background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"12px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", flexShrink:0 },
+  headerLeft: { display:"flex", alignItems:"center", gap:12 },
+  logo: { width:32, height:32, background:"#4f46e5", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:16 },
+  headerTitle: { margin:0, fontSize:15, fontWeight:700, letterSpacing:"-0.02em" },
+  headerSub: { margin:0, fontSize:11, color:"#94a3b8", fontFamily:"monospace" },
   headerBadges: { display:"flex", gap:8, alignItems:"center" },
-
-  // ── Badges — thin pill, mono uppercase, all same shape
-  badgeBase: { padding:"2px 9px", borderRadius:4, fontSize:9, fontWeight:500, fontFamily:RF.mono, letterSpacing:"0.1em", textTransform:"uppercase", border:"1px solid" },
-  badgeGov:       { padding:"2px 9px", borderRadius:4, fontSize:9, fontWeight:500, fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", textTransform:"uppercase", background:"rgba(96,165,250,0.08)", color:"rgba(147,197,253,1)", border:"1px solid rgba(96,165,250,0.25)" },
-  badgeOpp:       { padding:"2px 9px", borderRadius:4, fontSize:9, fontWeight:500, fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", textTransform:"uppercase", background:"rgba(251,113,133,0.08)", color:"rgba(253,164,175,1)", border:"1px solid rgba(251,113,133,0.25)" },
-  badgePractice:  { padding:"2px 9px", borderRadius:4, fontSize:9, fontWeight:500, fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", textTransform:"uppercase", background:"rgba(240,240,238,0.05)", color:RF.fgMuted, border:"1px solid "+RF.hairlineHov },
-  badgeSpeaking:  { padding:"2px 9px", borderRadius:4, fontSize:9, fontWeight:500, fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", textTransform:"uppercase", background:"rgba(167,139,250,0.1)", color:"rgba(196,181,253,1)", border:"1px solid rgba(167,139,250,0.25)" },
-  badgeRecording: { padding:"2px 9px", borderRadius:4, fontSize:9, fontWeight:500, fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", textTransform:"uppercase", background:"rgba(239,68,68,0.08)", color:"rgba(252,165,165,1)", border:"1px solid rgba(239,68,68,0.2)" },
-
-  // ── Layout
+  badgeGov: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#dbeafe", color:"#1d4ed8", border:"1px solid #bfdbfe" },
+  badgeOpp: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ffe4e6", color:"#be123c", border:"1px solid #fecdd3" },
+  badgePractice: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fef3c7", color:"#92400e", border:"1px solid #fde68a" },
+  badgeSpeaking: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#ede9fe", color:"#7c3aed", border:"1px solid #ddd6fe" },
+  badgeRecording: { padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700, background:"#fee2e2", color:"#dc2626", border:"1px solid #fecaca" },
   body: { display:"flex", flex:1, overflow:"hidden" },
-  sidebar: {
-    width:224, background:RF.bg, borderRight:"1px solid "+RF.hairline,
-    display:"flex", flexDirection:"column", gap:0,
-    padding:0, overflowY:"auto", flexShrink:0,
-  },
-  sideSection: { padding:"16px 16px", borderBottom:"1px solid "+RF.hairline },
-  sideLabel: {
-    margin:"0 0 10px 0", fontSize:9, fontWeight:500, color:RF.fgDim,
-    textTransform:"uppercase", letterSpacing:"0.14em", fontFamily:RF.mono,
-  },
-
-  // ── Form elements
-  textarea: {
-    width:"100%", background:RF.bgInput,
-    border:"1px solid "+RF.hairline, borderRadius:8,
-    padding:"10px 12px", fontSize:12, color:RF.fg,
-    resize:"none", fontFamily:RF.font, boxSizing:"border-box", lineHeight:1.6,
-    transition:"border-color 0.15s",
-  },
-  select: {
-    width:"100%", background:RF.bgInput,
-    border:"1px solid "+RF.hairline, borderRadius:7,
-    padding:"9px 10px", fontSize:12, color:RF.fg,
-    fontFamily:RF.font, appearance:"none",
-  },
-  resInput: {
-    width:"100%", background:RF.bgInput,
-    border:"1px solid "+RF.hairline, borderRadius:8,
-    padding:"10px 12px", fontSize:12, color:RF.fg,
-    fontFamily:RF.font, boxSizing:"border-box",
-    transition:"border-color 0.15s",
-  },
-
-  // ── Buttons
-  btnPrimary: {
-    width:"100%", background:RF.fg, color:RF.bg,
-    border:"none", borderRadius:7, padding:"9px 0",
-    fontSize:12, fontWeight:600, cursor:"pointer", marginTop:10,
-    transition:"opacity 0.15s",
-  },
-  btnSecondary: {
-    width:"100%", background:"transparent", color:RF.fgMuted,
-    border:"1px solid "+RF.hairlineHov, borderRadius:7, padding:"9px 0",
-    fontSize:12, fontWeight:400, cursor:"pointer", marginTop:8,
-    transition:"border-color 0.15s",
-  },
-  sideGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 },
-  btnGovActive:   { padding:"10px 0", borderRadius:7, fontSize:12, fontWeight:600, border:"1px solid rgba(96,165,250,0.5)", background:"rgba(96,165,250,0.1)", color:"rgba(147,197,253,1)", cursor:"pointer" },
-  btnGovInactive: { padding:"10px 0", borderRadius:7, fontSize:12, fontWeight:400, border:"1px solid "+RF.hairline, background:"transparent", color:RF.fgMuted, cursor:"pointer" },
-  btnOppActive:   { padding:"10px 0", borderRadius:7, fontSize:12, fontWeight:600, border:"1px solid rgba(251,113,133,0.5)", background:"rgba(251,113,133,0.1)", color:"rgba(253,164,175,1)", cursor:"pointer" },
-  btnOppInactive: { padding:"10px 0", borderRadius:7, fontSize:12, fontWeight:400, border:"1px solid "+RF.hairline, background:"transparent", color:RF.fgMuted, cursor:"pointer" },
-  actionBtn: {
-    textAlign:"left", padding:"8px 10px", borderRadius:7, fontSize:12, fontWeight:400,
-    border:"1px solid "+RF.hairline, background:"transparent",
-    color:RF.fgMuted, cursor:"pointer", width:"100%", marginBottom:4,
-    transition:"border-color 0.15s, color 0.15s",
-  },
-  exportBtn: {
-    width:"100%", background:"transparent",
-    border:"1px solid "+RF.hairline, borderRadius:7,
-    padding:"8px 0", fontSize:12, fontWeight:400,
-    color:RF.fgMuted, cursor:"pointer",
-  },
-  startBtn: {
-    width:"100%", background:RF.fg, color:RF.bg,
-    border:"none", borderRadius:8, padding:"13px 0",
-    fontSize:13, fontWeight:600, cursor:"pointer", marginTop:6,
-    letterSpacing:"-0.01em", transition:"opacity 0.15s",
-  },
-  startBtnDisabled: {
-    width:"100%", background:RF.hairline, color:RF.fgDim,
-    border:"1px solid "+RF.hairline, borderRadius:8, padding:"13px 0",
-    fontSize:13, fontWeight:600, cursor:"not-allowed", marginTop:6,
-  },
-  backBtn: {
-    background:"none", border:"none", color:RF.fgDim,
-    fontSize:11, cursor:"pointer", marginTop:16,
-    fontFamily:RF.mono, display:"block", textAlign:"center", width:"100%",
-    letterSpacing:"0.06em", textTransform:"uppercase",
-  },
-  sendBtn: {
-    background:RF.fg, color:RF.bg, border:"none",
-    borderRadius:8, padding:"10px 20px",
-    fontSize:12, fontWeight:600, cursor:"pointer", flexShrink:0,
-    transition:"opacity 0.15s",
-  },
-  sendBtnRed: {
-    background:"rgba(251,113,133,0.9)", color:"#fff", border:"none",
-    borderRadius:8, padding:"10px 20px",
-    fontSize:12, fontWeight:600, cursor:"pointer", flexShrink:0,
-  },
-  sendBtnDisabled: {
-    background:RF.hairline, color:RF.fgDim,
-    border:"1px solid "+RF.hairline,
-    borderRadius:8, padding:"10px 20px",
-    fontSize:12, fontWeight:600, cursor:"not-allowed", flexShrink:0,
-  },
-  smallBtn: {
-    fontSize:10, fontWeight:500, padding:"4px 10px", borderRadius:5,
-    border:"1px solid "+RF.hairlineHov, background:"transparent",
-    color:RF.fgMuted, cursor:"pointer", fontFamily:RF.mono,
-    letterSpacing:"0.06em", textTransform:"uppercase",
-    transition:"border-color 0.15s",
-  },
-  revBtnSend:   { background:RF.fg, color:RF.bg, border:"none", borderRadius:7, padding:"9px 14px", fontSize:12, fontWeight:600, cursor:"pointer" },
-  revBtnCancel: { background:"transparent", color:RF.fgMuted, border:"1px solid "+RF.hairlineHov, borderRadius:7, padding:"9px 14px", fontSize:12, cursor:"pointer" },
-  micBtn: function(rec) {
-    return {
-      width:40, height:40, borderRadius:8,
-      border: rec ? "1px solid rgba(239,68,68,0.5)" : "1px solid "+RF.hairlineHov,
-      cursor:"pointer", fontSize:16, flexShrink:0, color:RF.fg,
-      background: rec ? "rgba(239,68,68,0.15)" : RF.bgSurf2,
-      transition:"all 0.2s",
-    };
-  },
-
-  // ── Chat
+  sidebar: { width:220, background:"#fff", borderRight:"1px solid #e2e8f0", display:"flex", flexDirection:"column", gap:20, padding:16, overflowY:"auto", flexShrink:0 },
+  sideLabel: { margin:"0 0 6px 0", fontSize:10, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace" },
+  textarea: { width:"100%", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", fontSize:13, color:"#1e293b", resize:"none", fontFamily:"Georgia, serif", boxSizing:"border-box" },
+  btnPrimary: { width:"100%", background:"#4f46e5", color:"#fff", border:"none", borderRadius:8, padding:"8px 0", fontSize:13, fontWeight:700, cursor:"pointer", marginTop:8 },
+  btnSecondary: { width:"100%", background:"#fff", color:"#64748b", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 0", fontSize:13, cursor:"pointer", marginTop:8 },
+  sideGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
+  btnGovActive: { padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"none", background:"#2563eb", color:"#fff", cursor:"pointer" },
+  btnGovInactive: { padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
+  btnOppActive: { padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"none", background:"#e11d48", color:"#fff", cursor:"pointer" },
+  btnOppInactive: { padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
+  select: { width:"100%", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 10px", fontSize:13, color:"#1e293b" },
+  actionBtn: { textAlign:"left", padding:"8px 12px", borderRadius:8, fontSize:13, border:"1px solid #e2e8f0", background:"#fff", color:"#475569", cursor:"pointer", width:"100%", marginBottom:6 },
+  exportBtn: { width:"100%", background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 0", fontSize:13, color:"#475569", cursor:"pointer" },
   chat: { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" },
-  messages: { flex:1, overflowY:"auto", padding:"28px 32px 16px", display:"flex", flexDirection:"column", gap:12 },
+  messages: { flex:1, overflowY:"auto", padding:"24px", display:"flex", flexDirection:"column", gap:16 },
   msgWrapUser: { display:"flex", justifyContent:"flex-end" },
   msgWrapAsst: { display:"flex", justifyContent:"flex-start" },
-  msgUser: {
-    maxWidth:560, background:RF.bgSurf2,
-    border:"1px solid "+RF.hairlineHov,
-    borderRadius:12, borderBottomRightRadius:3,
-    padding:"12px 16px", fontSize:13, lineHeight:1.65, marginLeft:80, color:RF.fg,
-  },
-  msgAsst: {
-    maxWidth:660, background:RF.bgSurf,
-    border:"1px solid "+RF.hairline,
-    borderRadius:12, borderBottomLeftRadius:3,
-    padding:"14px 18px", fontSize:13, lineHeight:1.65, marginRight:40, color:RF.fg,
-  },
-  msgAsstOpponent: {
-    maxWidth:660, background:RF.bgSurf,
-    border:"1px solid rgba(251,113,133,0.2)",
-    borderLeft:"2px solid rgba(251,113,133,0.6)",
-    borderRadius:12, borderBottomLeftRadius:3,
-    padding:"14px 18px", fontSize:13, lineHeight:1.65, marginRight:40, color:RF.fg,
-  },
-  msgAsstJudge: {
-    maxWidth:660, background:RF.bgSurf,
-    border:"1px solid rgba(74,222,128,0.15)",
-    borderLeft:"2px solid rgba(74,222,128,0.5)",
-    borderRadius:12, borderBottomLeftRadius:3,
-    padding:"14px 18px", fontSize:13, lineHeight:1.65, marginRight:40, color:RF.fg,
-  },
-  msgTag: { fontSize:9, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:RF.mono, marginBottom:10, opacity:0.5 },
-  msgActions: { marginTop:12, paddingTop:10, borderTop:"1px solid "+RF.hairline, display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" },
-  loadingDot: { width:4, height:4, borderRadius:"50%", background:RF.fgMuted, display:"inline-block", margin:"0 3px", animation:"pulse 1.2s ease-in-out infinite" },
-
-  // ── Revision bar
-  revBar: { padding:"12px 24px", background:RF.bg, borderTop:"1px solid "+RF.hairline },
-  revLabel: { fontSize:9, fontWeight:500, color:RF.fgDim, textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:RF.mono, marginBottom:8 },
+  msgUser: { maxWidth:560, background:"#4f46e5", color:"#fff", borderRadius:14, padding:"12px 16px", fontSize:13, lineHeight:1.6, marginLeft:80 },
+  msgAsst: { maxWidth:640, background:"#fff", border:"1px solid #e2e8f0", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  msgAsstOpponent: { maxWidth:640, background:"#fff5f5", border:"1px solid #fecdd3", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  msgAsstJudge: { maxWidth:640, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"14px 18px", fontSize:13, lineHeight:1.6, marginRight:48, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  msgTag: { fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:8 },
+  msgActions: { marginTop:12, paddingTop:10, borderTop:"1px solid #f1f5f9", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" },
+  smallBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #e2e8f0", background:"#fff", color:"#64748b", cursor:"pointer" },
+  replayBtn: { fontSize:11, padding:"5px 10px", borderRadius:6, border:"1px solid #ddd6fe", background:"#ede9fe", color:"#7c3aed", cursor:"pointer", marginTop:8, display:"inline-block" },
+  loadingDot: { width:6, height:6, borderRadius:"50%", background:"#4f46e5", display:"inline-block", margin:"0 2px" },
+  revBar: { padding:"12px 24px", background:"#fff", borderTop:"1px solid #e2e8f0" },
+  revLabel: { fontSize:10, fontWeight:700, color:"#4f46e5", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:6 },
   revRow: { display:"flex", gap:8 },
-
-  // ── Input bar
-  inputBar: { padding:"14px 24px", background:RF.bg, borderTop:"1px solid "+RF.hairline, flexShrink:0 },
-  speechLabel: { fontSize:9, color:"rgba(253,164,175,0.9)", fontWeight:500, fontFamily:RF.mono, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:8 },
-  inputRow: { display:"flex", gap:8, alignItems:"flex-end" },
-  inputTextarea: {
-    flex:1, background:RF.bgInput,
-    border:"1px solid "+RF.hairline, borderRadius:8,
-    padding:"10px 14px", fontSize:12, color:RF.fg,
-    resize:"none", fontFamily:RF.font, lineHeight:1.6,
-    transition:"border-color 0.15s",
-  },
-  transcriptBox: {
-    flex:1, background:RF.bgInput,
-    border:"1px solid "+RF.hairline, borderRadius:8,
-    padding:"10px 14px", fontSize:12, color:RF.fg,
-    minHeight:40, lineHeight:1.6,
-  },
-  inputHint: { fontSize:9, color:RF.fgDim, marginTop:6, fontFamily:RF.mono, letterSpacing:"0.06em", textTransform:"uppercase" },
-
-  // ── Landing
-  landing: { flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:RF.bg },
-  landingCard: {
-    background:"transparent",
-    maxWidth:520, width:"100%", textAlign:"center",
-    padding:"0 24px",
-    animation:"fadeUp 0.5s ease both",
-  },
-  landingTitle: {
-    fontSize:48, fontWeight:700, margin:"0 0 12px 0",
-    letterSpacing:"-0.04em", color:RF.fg, lineHeight:1.05,
-  },
-  landingSubtitle: { fontSize:14, color:RF.fgMuted, margin:"0 0 44px 0", lineHeight:1.65, fontWeight:300 },
-  landingGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
-  landingBtnCase: {
-    background:RF.fg, color:RF.bg,
-    border:"none", borderRadius:12, padding:"22px 16px",
-    fontSize:13, fontWeight:600, cursor:"pointer",
-    display:"flex", flexDirection:"column", alignItems:"center", gap:8,
-    transition:"opacity 0.15s",
-  },
-  landingBtnPractice: {
-    background:"transparent", color:RF.fg,
-    border:"1px solid "+RF.hairlineHov,
-    borderRadius:12, padding:"22px 16px",
-    fontSize:13, fontWeight:500, cursor:"pointer",
-    display:"flex", flexDirection:"column", alignItems:"center", gap:8,
-    transition:"border-color 0.15s",
-  },
-  landingBtnSub: { fontSize:11, fontWeight:300, opacity:0.55, letterSpacing:"0.01em" },
-
-  // ── Setup card
-  setupCard: {
-    background:RF.bgSurf,
-    border:"1px solid "+RF.hairline,
-    borderRadius:16, padding:"40px 36px",
-    maxWidth:460, width:"100%",
-    animation:"fadeUp 0.4s ease both",
-  },
-  setupTitle: { fontSize:22, fontWeight:700, margin:"0 0 6px 0", letterSpacing:"-0.03em", color:RF.fg },
-  setupSubtitle: { fontSize:12, color:RF.fgMuted, margin:"0 0 32px 0", lineHeight:1.6, fontWeight:300 },
-  setupSection: { marginBottom:28 },
-  setupSectionLabel: { fontSize:9, fontWeight:500, color:RF.fgDim, textTransform:"uppercase", letterSpacing:"0.14em", fontFamily:RF.mono, marginBottom:12, display:"block" },
-  optionGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
-  optionBtn: { padding:"12px 10px", borderRadius:8, fontSize:12, fontWeight:400, border:"1px solid "+RF.hairline, background:"transparent", color:RF.fgMuted, cursor:"pointer", textAlign:"center", transition:"border-color 0.15s" },
-  optionBtnActive: { padding:"12px 10px", borderRadius:8, fontSize:12, fontWeight:600, border:"1px solid "+RF.hairlineHov, background:RF.bgSurf2, color:RF.fg, cursor:"pointer", textAlign:"center" },
+  revBtnSend: { background:"#4f46e5", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer" },
+  revBtnCancel: { background:"#fff", color:"#94a3b8", border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 14px", fontSize:13, cursor:"pointer" },
+  inputBar: { padding:"14px 24px", background:"#fff", borderTop:"1px solid #e2e8f0", flexShrink:0 },
+  speechLabel: { fontSize:11, color:"#e11d48", fontWeight:700, fontFamily:"monospace", marginBottom:6 },
+  inputRow: { display:"flex", gap:10, alignItems:"flex-end" },
+  inputTextarea: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:12, padding:"10px 14px", fontSize:13, color:"#1e293b", resize:"none", fontFamily:"Georgia, serif" },
+  sendBtn: { background:"#4f46e5", color:"#fff", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"pointer" },
+  sendBtnRed: { background:"#e11d48", color:"#fff", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"pointer" },
+  sendBtnDisabled: { background:"#f1f5f9", color:"#94a3b8", border:"none", borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"not-allowed" },
+  inputHint: { fontSize:11, color:"#cbd5e1", marginTop:6, fontFamily:"monospace" },
+  micBtn: function(rec) { return { width:44, height:44, borderRadius:"50%", border:"none", cursor:"pointer", fontSize:18, flexShrink:0, color:"#fff", background: rec ? "#dc2626" : "#4f46e5", transition:"all 0.2s" }; },
+  transcriptBox: { flex:1, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#1e293b", minHeight:44, lineHeight:1.6, fontFamily:"Georgia, serif" },
+  landing: { flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#f8fafc" },
+  landingCard: { background:"#fff", borderRadius:20, padding:"48px 40px", boxShadow:"0 4px 24px rgba(0,0,0,0.08)", maxWidth:480, width:"100%", textAlign:"center" },
+  landingTitle: { fontSize:26, fontWeight:700, margin:"0 0 8px 0", letterSpacing:"-0.02em" },
+  landingSubtitle: { fontSize:14, color:"#94a3b8", margin:"0 0 36px 0", lineHeight:1.6 },
+  landingGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 },
+  landingBtnCase: { background:"#4f46e5", color:"#fff", border:"none", borderRadius:12, padding:"20px 16px", fontSize:14, fontWeight:700, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:8 },
+  landingBtnPractice: { background:"#fff", color:"#1e293b", border:"2px solid #e2e8f0", borderRadius:12, padding:"20px 16px", fontSize:14, fontWeight:700, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:8 },
+  landingBtnSub: { fontSize:11, fontWeight:400, opacity:0.75 },
+  setupCard: { background:"#fff", borderRadius:20, padding:"40px 36px", boxShadow:"0 4px 24px rgba(0,0,0,0.08)", maxWidth:460, width:"100%" },
+  setupTitle: { fontSize:20, fontWeight:700, margin:"0 0 6px 0" },
+  setupSubtitle: { fontSize:13, color:"#94a3b8", margin:"0 0 28px 0" },
+  setupSection: { marginBottom:22 },
+  setupSectionLabel: { fontSize:10, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"monospace", marginBottom:10, display:"block" },
+  optionGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
+  optionBtn: { padding:"12px 10px", borderRadius:10, fontSize:13, fontWeight:600, border:"2px solid #e2e8f0", background:"#fff", color:"#475569", cursor:"pointer", textAlign:"center" },
+  optionBtnActive: { padding:"12px 10px", borderRadius:10, fontSize:13, fontWeight:700, border:"2px solid #4f46e5", background:"#eef2ff", color:"#4f46e5", cursor:"pointer", textAlign:"center" },
+  resInput: { width:"100%", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"10px 12px", fontSize:13, color:"#1e293b", fontFamily:"Georgia, serif", boxSizing:"border-box" },
+  startBtn: { width:"100%", background:"#4f46e5", color:"#fff", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"pointer", marginTop:4 },
+  startBtnDisabled: { width:"100%", background:"#f1f5f9", color:"#cbd5e1", border:"none", borderRadius:10, padding:"12px 0", fontSize:14, fontWeight:700, cursor:"not-allowed", marginTop:4 },
+  backBtn: { background:"none", border:"none", color:"#94a3b8", fontSize:12, cursor:"pointer", marginTop:14, fontFamily:"Georgia, serif", display:"block", textAlign:"center", width:"100%" },
   diffGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 },
-  diffBtn: function(active, color, bg) {
-    return {
-      padding:"11px 8px", borderRadius:8, fontSize:11, textAlign:"center", cursor:"pointer",
-      fontWeight: active ? 600 : 400,
-      border: active ? "1px solid " + color : "1px solid " + RF.hairline,
-      background: active ? "rgba(255,255,255,0.04)" : "transparent",
-      color: active ? color : RF.fgMuted,
-      transition:"border-color 0.15s",
-    };
-  },
+  diffBtn: function(active, color, bg) { return { padding:"10px 8px", borderRadius:10, fontSize:12, fontWeight: active ? 700 : 600, border: active ? "2px solid " + color : "2px solid #e2e8f0", background: active ? bg : "#fff", color: active ? color : "#64748b", cursor:"pointer", textAlign:"center" }; },
 };
 
 function cleanForSpeech(text) {
@@ -808,8 +584,8 @@ export default function App() {
         const parts = line.split(/\*\*/g);
         return <div key={i} style={{ marginBottom:2 }}>{parts.map(function(p,j) { return j%2===1 ? <strong key={j}>{p}</strong> : <span key={j}>{p}</span>; })}</div>;
       }
-      if (/^- /.test(line)) return <div key={i} style={{ paddingLeft:16, marginBottom:2, color:RF.fgMuted }}>{"• "}{line.slice(2)}</div>;
-      if (/^(CLAIM|WARRANT|IMPACT|Claim:|Warrant:|Impact:)/i.test(line)) return <div key={i} style={{ fontWeight:700, color:"rgba(74,222,128,0.8)", marginTop:8, marginBottom:2, fontSize:12, fontFamily:"monospace" }}>{line}</div>;
+      if (/^- /.test(line)) return <div key={i} style={{ paddingLeft:16, marginBottom:2, color:"#475569" }}>{"• "}{line.slice(2)}</div>;
+      if (/^(CLAIM|WARRANT|IMPACT|Claim:|Warrant:|Impact:)/i.test(line)) return <div key={i} style={{ fontWeight:700, color:"#0f766e", marginTop:8, marginBottom:2, fontSize:12, fontFamily:"monospace" }}>{line}</div>;
       if (line.trim() === "") return <div key={i} style={{ height:8 }} />;
       return <div key={i} style={{ marginBottom:2, lineHeight:1.7 }}>{line}</div>;
     });
@@ -823,33 +599,26 @@ export default function App() {
   if (appMode === "landing") {
     return (
       <div style={s.app}>
-        <style>{GLOBAL_CSS}</style>
         <header style={s.header}>
           <div style={s.headerLeft}>
             <div style={s.logo}>{"⚖"}</div>
             <div><p style={s.headerTitle}>Parli Coach</p><p style={s.headerSub}>HS Parliamentary Debate</p></div>
           </div>
         </header>
-        <div style={{ overflow:"hidden", borderBottom:"1px solid rgba(240,240,238,0.06)", background:"transparent", height:28, display:"flex", alignItems:"center" }}>
-          <div style={{ display:"flex", whiteSpace:"nowrap", animation:"marquee 18s linear infinite", fontSize:9, fontFamily:"'DM Mono',monospace", letterSpacing:"0.12em", textTransform:"uppercase", color:"rgba(240,240,238,0.2)" }}>
-            {"PARLI COACH · HS PARLIAMENTARY DEBATE · AFF vs NEG · VARSITY · NOVICE · JV · TOC · CASE GENERATOR · FULL ROUND PRACTICE · ".repeat(6)}
-          </div>
-        </div>
         <div style={s.landing}>
           <div style={s.landingCard}>
-            <div style={{ fontSize:10, fontFamily:"'DM Mono',monospace", letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(240,240,238,0.3)", marginBottom:24 }}>Parliamentary Debate · AI Coach</div>
-            <p style={s.landingTitle}>{"Win the
-round."}</p>
-            <p style={s.landingSubtitle}>Build airtight cases or go head-to-head against an AI opponent that hits as hard as your next competitor.</p>
+            <div style={{ fontSize:52, marginBottom:16 }}>{"⚖️"}</div>
+            <p style={s.landingTitle}>Ready to debate.</p>
+            <p style={s.landingSubtitle}>Generate a full case or simulate a complete debate round against the AI.</p>
             <div style={s.landingGrid}>
               <button style={s.landingBtnCase} onClick={function() { setAppMode("case"); }}>
-                <span style={{ fontSize:22, marginBottom:2 }}>{"📋"}</span>
-                <span style={{ fontWeight:700, letterSpacing:"-0.02em" }}>Case Generator</span>
-                <span style={s.landingBtnSub}>Full 8-min case, any side</span>
+                <span style={{ fontSize:28 }}>{"📋"}</span>
+                Case Generator
+                <span style={s.landingBtnSub}>Build a full 8-min case</span>
               </button>
               <button style={s.landingBtnPractice} onClick={function() { setAppMode("setup"); }}>
-                <span style={{ fontSize:22, marginBottom:2 }}>{"⚔️"}</span>
-                <span style={{ fontWeight:600, letterSpacing:"-0.02em" }}>Full Round</span>
+                <span style={{ fontSize:28 }}>{"⚔️"}</span>
+                Full Round Practice
                 <span style={s.landingBtnSub}>Simulate a real round</span>
               </button>
             </div>
@@ -862,7 +631,6 @@ round."}</p>
   if (appMode === "setup") {
     return (
       <div style={s.app}>
-        <style>{GLOBAL_CSS}</style>
         <header style={s.header}>
           <div style={s.headerLeft}>
             <div style={s.logo}>{"⚖"}</div>
@@ -880,7 +648,7 @@ round."}</p>
                 <button style={setupSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setSetupSide("gov"); }}>AFF</button>
                 <button style={setupSide === "opp" ? s.btnOppActive : s.btnOppInactive} onClick={function() { setSetupSide("opp"); }}>NEG</button>
               </div>
-              {setupSide && <div style={{ fontSize:10, color:RF.fgMuted, marginTop:8, fontFamily:"'DM Mono',monospace", letterSpacing:"0.04em" }}>{setupSide === "gov" ? "You open. Bot plays Neg." : "Bot opens as Aff. You respond first."}</div>}
+              {setupSide && <div style={{ fontSize:11, color:"#94a3b8", marginTop:8, fontFamily:"monospace" }}>{setupSide === "gov" ? "You open. Bot plays Neg." : "Bot opens as Aff. You respond first."}</div>}
             </div>
             <div style={s.setupSection}>
               <span style={s.setupSectionLabel}>Difficulty</span>
@@ -923,7 +691,6 @@ round."}</p>
     const steps = getProgressSteps();
     return (
       <div style={s.app}>
-        <style>{GLOBAL_CSS}</style>
         <header style={s.header}>
           <div style={s.headerLeft}>
             <div style={s.logo}>{"⚖"}</div>
@@ -935,31 +702,30 @@ round."}</p>
             <span style={s.badgePractice}>{"⚔ FULL ROUND"}</span>
             {speaking && <span style={s.badgeSpeaking}>{"🔊 Speaking"}</span>}
             {recording && <span style={s.badgeRecording}>{"🔴 Recording"}</span>}
-            <button onClick={resetToLanding} style={{ background:"transparent", border:"1px solid rgba(240,240,238,0.12)", borderRadius:6, padding:"4px 10px", fontSize:9, color:"rgba(240,240,238,0.4)", cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.08em", textTransform:"uppercase" }}>{"← Home"}</button>
+            <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>{"← Home"}</button>
           </div>
         </header>
         <div style={s.body}>
           <aside style={s.sidebar}>
             <div>
               <p style={s.sideLabel}>Resolution</p>
-              <div style={{ fontSize:12, color:RF.fgMuted, lineHeight:1.5, padding:"8px 10px", background:RF.bgInput, borderRadius:6, border:"1px solid "+RF.hairline }}>{resolution}</div>
+              <div style={{ fontSize:12, color:"#475569", lineHeight:1.5, padding:"8px 10px", background:"#f8fafc", borderRadius:8, border:"1px solid #e2e8f0" }}>{resolution}</div>
             </div>
             <div>
               <p style={s.sideLabel}>Round Progress</p>
               {steps.map(function(step, i) {
                 return (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
-                    <div style={{ width:6, height:6, borderRadius:"50%", flexShrink:0, background: step.done ? RF.fg : step.active ? "rgba(251,191,36,0.9)" : RF.hairlineHov, transition:"background 0.2s" }} />
-                    <span style={{ fontSize:11, fontWeight: step.active ? 600 : 400, color: step.done ? RF.fg : step.active ? "rgba(251,191,36,0.9)" : RF.fgDim, fontFamily: step.active ? RF.font : RF.font }}>{step.label}</span>
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <div style={{ width:8, height:8, borderRadius:"50%", flexShrink:0, background: step.done ? "#4f46e5" : step.active ? "#fbbf24" : "#e2e8f0" }} />
+                    <span style={{ fontSize:12, fontWeight: step.active ? 700 : 400, color: step.done ? "#4f46e5" : step.active ? "#92400e" : "#cbd5e1" }}>{step.label}</span>
                   </div>
                 );
               })}
             </div>
-            <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:5, marginTop:"auto" }}>
-              {speaking && <button style={s.actionBtn} onClick={function() { doStopSpeaking(); setSpeaking(false); }}>{"⏹ Stop"}</button>}
-              {roundOver && <button style={Object.assign({}, s.actionBtn, { background:RF.fg, color:RF.bg, border:"none", fontWeight:600 })} onClick={function() { setAppMode("setup"); }}>{"↺ New Round"}</button>}
-              <button style={s.actionBtn} onClick={resetToLanding}>{"← Home"}</button>
-            </div>
+            {speaking && <button style={s.actionBtn} onClick={function() { doStopSpeaking(); setSpeaking(false); }}>{"⏹ Stop Speaking"}</button>}
+
+            {roundOver && <button style={Object.assign({}, s.actionBtn, { background:"#4f46e5", color:"#fff", border:"none", fontWeight:700 })} onClick={function() { setAppMode("setup"); }}>{"🔄 New Round"}</button>}
+            <button style={s.actionBtn} onClick={resetToLanding}>{"← Home"}</button>
           </aside>
           <main style={s.chat}>
             <div style={s.messages}>
@@ -979,7 +745,7 @@ round."}</p>
                       {msg.role === "user" && <div style={Object.assign({}, s.msgTag, { color:"rgba(255,255,255,0.6)" })}>{userSide === "Affirmative" ? "🎤 Aff" : "🎤 Neg"}</div>}
                       {msg.role === "assistant" ? <div>{formatMessage(msg.content)}</div> : <p style={{ margin:0, lineHeight:1.6 }}>{msg.content}</p>}
                       {msg.role === "assistant" && msg.verbatim && (
-                        <button style={{ marginTop:10, padding:"7px 14px", borderRadius:7, border:"1px solid rgba(240,240,238,0.15)", background:"rgba(240,240,238,0.06)", color:RF.fg, fontSize:11, fontWeight:500, cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontFamily:"'DM Mono',monospace", letterSpacing:"0.08em", textTransform:"uppercase" }} onClick={function() {
+                        <button style={{ marginTop:10, padding:"8px 16px", borderRadius:8, border:"none", background:"#4f46e5", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }} onClick={function() {
                           doSpeakText(msg.verbatim);
                         }}>{"▶ Play Speech"}</button>
                       )}
@@ -991,7 +757,7 @@ round."}</p>
                 <div style={s.msgWrapAsst}>
                   <div style={s.msgAsstOpponent}>
                     <div style={Object.assign({}, s.msgTag, { color:"#be123c" })}>{botSide === "Negative" ? "⚔ Neg" : "⚔ Aff"}</div>
-                    <span style={{ color:RF.fgDim, fontSize:12, marginRight:8 }}>Preparing speech</span>
+                    <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Preparing speech</span>
                     <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                   </div>
                 </div>
@@ -1000,9 +766,9 @@ round."}</p>
             </div>
             <div style={s.inputBar}>
               {label && <div style={s.speechLabel}>{"🎤 " + label}</div>}
-              {speaking && <div style={{ fontSize:11, color:"rgba(196,181,253,0.9)", fontWeight:500, marginBottom:6, fontFamily:"'DM Mono',monospace", fontSize:9, letterSpacing:"0.1em", textTransform:"uppercase" }}>{"🔊 Opponent speaking"}</div>}
-              {!userTurn && !loading && !speaking && !roundOver && <div style={{ fontSize:11, color:RF.fgDim, marginBottom:6, fontFamily:"'DM Mono',monospace", fontSize:9, letterSpacing:"0.1em", textTransform:"uppercase" }}>Opponent is preparing...</div>}
-              {roundOver && <div style={{ fontSize:11, color:"rgba(74,222,128,0.8)", fontWeight:500, marginBottom:6, fontFamily:"'DM Mono',monospace", fontSize:9, letterSpacing:"0.1em", textTransform:"uppercase" }}>{"Round complete"}</div>}
+              {speaking && <div style={{ fontSize:11, color:"#7c3aed", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>{"🔊 Opponent speaking"}</div>}
+              {!userTurn && !loading && !speaking && !roundOver && <div style={{ fontSize:11, color:"#94a3b8", marginBottom:6, fontFamily:"monospace" }}>Opponent is preparing...</div>}
+              {roundOver && <div style={{ fontSize:11, color:"#15803d", fontWeight:700, marginBottom:6, fontFamily:"monospace" }}>{"✓ Round complete"}</div>}
               <div style={s.inputRow}>
                 <button style={s.micBtn(recording)} onClick={recording ? stopRecording : startRecording} disabled={!userTurn && !recording} title={recording ? "Stop" : "Record"}>{recording ? "⏹" : "🎤"}</button>
                 <div style={s.transcriptBox}>
@@ -1026,7 +792,6 @@ round."}</p>
 
   return (
     <div style={s.app}>
-      <style>{GLOBAL_CSS}</style>
       <header style={s.header}>
         <div style={s.headerLeft}>
           <div style={s.logo}>{"⚖"}</div>
@@ -1034,12 +799,12 @@ round."}</p>
         </div>
         <div style={s.headerBadges}>
           {caseResSet && caseSide && <span style={caseSide === "gov" ? s.badgeGov : s.badgeOpp}>{caseSide === "gov" ? "▲ AFF" : "▼ NEG"}</span>}
-          <button onClick={resetToLanding} style={{ background:"transparent", border:"1px solid rgba(240,240,238,0.12)", borderRadius:6, padding:"4px 10px", fontSize:9, color:"rgba(240,240,238,0.4)", cursor:"pointer", fontFamily:"'DM Mono',monospace", letterSpacing:"0.08em", textTransform:"uppercase" }}>{"← Home"}</button>
+          <button onClick={resetToLanding} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#94a3b8", cursor:"pointer" }}>{"← Home"}</button>
         </div>
       </header>
       <div style={s.body}>
         <aside style={s.sidebar}>
-          <div style={s.sideSection}>
+          <div>
             <p style={s.sideLabel}>Resolution</p>
             <textarea style={s.textarea} rows={3} placeholder="Enter the resolution..." value={caseRes} onChange={function(e) { setCaseRes(e.target.value); }} disabled={caseResSet} />
             {!caseResSet
@@ -1048,7 +813,7 @@ round."}</p>
             }
           </div>
           {caseResSet && (
-            <div style={s.sideSection}>
+            <div>
               <p style={s.sideLabel}>Side</p>
               <div style={s.sideGrid}>
                 <button style={caseSide === "gov" ? s.btnGovActive : s.btnGovInactive} onClick={function() { setCaseSide("gov"); }}>AFF</button>
@@ -1057,15 +822,16 @@ round."}</p>
             </div>
           )}
           {caseResSet && caseSide && (
-            <div style={s.sideSection}>
-              <p style={s.sideLabel}>Speech</p>
+            <div>
+              <div>
+                <p style={s.sideLabel}>Speech</p>
                 <select style={s.select} value={caseSpeechType} onChange={function(e) { setCaseSpeechType(e.target.value); }}>
                   <option value="constructive">{caseSide === "gov" ? "Aff 1 Constructive" : "Neg 1 Constructive"}</option>
                   <option value="extension">{caseSide === "gov" ? "Aff 2 Extension" : "Neg 2 Extension"}</option>
                   <option value="whip">{caseSide === "gov" ? "Aff 3 Whip" : "Neg 3 Whip"}</option>
                 </select>
               </div>
-              <div style={{ marginTop:14 }}>
+              <div style={{ marginTop:16 }}>
                 <p style={s.sideLabel}>Generate</p>
                 {[{ key:"case", label:"📋 Full Case" },{ key:"whip", label:"🏁 Whip Speech" },{ key:"plan", label:"📄 Write a Plan" },{ key:"counterplan", label:"↩️ Counterplan" }].map(function(item) {
                   return <button key={item.key} style={s.actionBtn} onClick={function() { handleCaseQuickAction(item.key); }} disabled={caseLoading}>{item.label}</button>;
@@ -1074,7 +840,7 @@ round."}</p>
             </div>
           )}
           {caseMsgs.length > 0 && (
-            <div style={s.sideSection}>
+            <div>
               <p style={s.sideLabel}>Export</p>
               <button style={s.exportBtn} onClick={function() {
                 const content = caseMsgs.map(function(m) { return "[" + m.role.toUpperCase() + "]\n" + m.content; }).join("\n\n---\n\n");
@@ -1092,8 +858,8 @@ round."}</p>
             {caseMsgs.length === 0 && (
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", textAlign:"center", gap:8 }}>
                 <div style={{ fontSize:48 }}>{"⚖️"}</div>
-                <p style={{ fontSize:20, fontWeight:700, margin:0, letterSpacing:"-0.03em" }}>Ready to debate.</p>
-                <p style={{ fontSize:13, color:RF.fgMuted, maxWidth:280, lineHeight:1.6, margin:0 }}>Set a resolution, pick your side, then generate a case.</p>
+                <p style={{ fontSize:22, fontWeight:700, margin:0 }}>Ready to debate.</p>
+                <p style={{ fontSize:13, color:"#94a3b8", maxWidth:280, lineHeight:1.6, margin:0 }}>Set a resolution, pick your side, then generate a case.</p>
               </div>
             )}
             {caseMsgs.map(function(msg, i) {
@@ -1114,7 +880,7 @@ round."}</p>
             {caseLoading && (
               <div style={s.msgWrapAsst}>
                 <div style={s.msgAsst}>
-                  <span style={{ color:RF.fgDim, fontSize:12, marginRight:8 }}>Generating</span>
+                  <span style={{ color:"#94a3b8", fontSize:13, marginRight:8 }}>Generating</span>
                   <span style={s.loadingDot}/><span style={s.loadingDot}/><span style={s.loadingDot}/>
                 </div>
               </div>
@@ -1154,3 +920,5 @@ round."}</p>
     </div>
   );
 }
+
+
