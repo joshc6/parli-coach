@@ -627,46 +627,13 @@ export default function App() {
     const flowText = flow.columns.map(function(col) {
       const args = col.args.map(function(a, i) {
         return (i+1) + ". " + a.text + (a.dropped ? " [DROPPED]" : "");
-      }).join("
-");
-      return col.speech + ":
-" + (args || "(no arguments logged)");
-    }).join("
-
-");
+      }).join("\n");
+      return col.speech + ":\n" + (args || "(no arguments logged)");
+    }).join("\n\n");
     const allRoundsText = flowRounds.filter(function(r) { return r.id !== activeFlowId && r.analysis; }).slice(0,5).map(function(r) {
-      return "PAST ROUND (" + r.date + ", " + r.resolution + "):
-" + r.analysis;
-    }).join("
-
----
-
-");
-    const prompt = "You are an expert parliamentary debate judge analyzing a full round flow.
-
-RESOLUTION: " + flow.resolution + "
-TOURNAMENT: " + (flow.tournament||"Unknown") + " Round " + (flow.roundNum||"?") + "
-
-FLOW:
-" + flowText + (allRoundsText ? "
-
----
-PAST ROUND DATA FOR PATTERN ANALYSIS:
-" + allRoundsText : "") + "
-
-Provide a comprehensive judge analysis with these labeled sections:
-
-1. ROUND SUMMARY: 2-3 sentences on how the round played out.
-
-2. DROPPED ARGUMENTS: List every argument that was dropped and which side benefits. Name the speech it was dropped in.
-
-3. KEY CLASH POINTS: The 2-3 central arguments where both sides engaged. Who won each and why.
-
-4. VOTERS: The 3 arguments you would vote on as judge. Rank them and explain why.
-
-5. DECISION: Who won and the single clearest reason. Be direct.
-
-6. PATTERN ANALYSIS (if past round data available): Identify recurring weaknesses or strengths across rounds. Be specific.";
+      return "PAST ROUND (" + r.date + ", " + r.resolution + "):\n" + r.analysis;
+    }).join("\n\n---\n\n");
+    const prompt = "You are an expert parliamentary debate judge analyzing a full round flow.\n\nRESOLUTION: " + flow.resolution + "\nTOURNAMENT: " + (flow.tournament||"Unknown") + " Round " + (flow.roundNum||"?") + "\n\nFLOW:\n" + flowText + (allRoundsText ? "\n\n---\nPAST ROUND DATA FOR PATTERN ANALYSIS:\n" + allRoundsText : "") + "\n\nProvide a comprehensive judge analysis with these labeled sections:\n\n1. ROUND SUMMARY: 2-3 sentences on how the round played out.\n\n2. DROPPED ARGUMENTS: List every argument that was dropped and which side benefits. Name the speech it was dropped in.\n\n3. KEY CLASH POINTS: The 2-3 central arguments where both sides engaged. Who won each and why.\n\n4. VOTERS: The 3 arguments you would vote on as judge. Rank them and explain why.\n\n5. DECISION: Who won and the single clearest reason. Be direct.\n\n6. PATTERN ANALYSIS (if past round data available): Identify recurring weaknesses or strengths across rounds. Be specific.";
     try {
       const result = await callAPI(prompt, "You are an expert parliamentary debate judge. Be direct, specific, and analytical. Use clear numbered section headers.");
       setFlowAnalysis(result);
@@ -1182,8 +1149,7 @@ Provide a comprehensive judge analysis with these labeled sections:
               )}
               {flowAnalysis && !flowAnalysisLoading && (
                 <div style={{ background:RF.bgSurf, border:"1px solid "+RF.hairline, borderRadius:12, padding:28 }}>
-                  {flowAnalysis.split("
-").map(function(line,i) {
+                  {flowAnalysis.split("\n").map(function(line,i) {
                     if (/^\d+\./.test(line.trim())) return <p key={i} style={{ fontSize:11, fontWeight:700, color:GC, fontFamily:RF.mono, letterSpacing:"0.08em", textTransform:"uppercase", margin:"20px 0 8px 0", borderTop:"1px solid "+RF.hairline, paddingTop:16 }}>{line}</p>;
                     if (line.trim()==="") return <div key={i} style={{height:6}}/>;
                     return <p key={i} style={{ fontSize:13, lineHeight:1.7, color:RF.fg, margin:"0 0 4px 0" }}>{line}</p>;
@@ -1215,8 +1181,7 @@ Provide a comprehensive judge analysis with these labeled sections:
         <div style={s.landing}>
           <div style={s.landingCard}>
             <div style={{ fontSize:10, fontFamily:"'DM Mono',monospace", letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(240,240,238,0.3)", marginBottom:24 }}>Parliamentary Debate · AI Coach</div>
-            <p style={s.landingTitle}>{"Win the
-round."}</p>
+            <p style={s.landingTitle}>{"Win the round."}</p>
             <p style={s.landingSubtitle}>Build airtight cases or go head-to-head against an AI opponent that hits as hard as your next competitor.</p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
               <button style={s.landingBtnCase} onClick={function() { setAppMode("case"); }}>
