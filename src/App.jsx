@@ -171,6 +171,7 @@ const s = {
   },
 };
 
+// ── Text cleaning for TTS ────────────────────────────────────────────────────
 function cleanForSpeech(text) {
   const kills = ["Claim:","claim:","Warrant:","warrant:","Impact:","impact:","Sub:","sub:","C1:","C2:","C3:","C4:","C5:"];
   let t = text;
@@ -192,35 +193,71 @@ function cleanForSpeech(text) {
   return result.trim();
 }
 
-var _ttsVoice = null;
-function _loadVoice() {
-  var voices = window.speechSynthesis.getVoices();
-  if (!voices.length) return;
-  for (var i=0;i<voices.length;i++) { if (voices[i].name==="Google US English"){_ttsVoice=voices[i];return;} }
-  for (var i=0;i<voices.length;i++) { if (voices[i].name.indexOf("Google")!==-1&&voices[i].lang.indexOf("en")===0){_ttsVoice=voices[i];return;} }
-  for (var i=0;i<voices.length;i++) { if (voices[i].lang==="en-US"){_ttsVoice=voices[i];return;} }
-  _ttsVoice = voices[0];
-}
-if (typeof window!=="undefined") { window.speechSynthesis.onvoiceschanged=_loadVoice; _loadVoice(); }
+// ── OpenAI TTS ───────────────────────────────────────────────────────────────
+// Replaces browser speechSynthesis with OpenAI's tts-1 via /api/tts
+// Uses an Audio element for playback — works on all browsers, sounds way better
 
-function doSpeakText(text, onDone) {
-  var synth = window.speechSynthesis;
+var _currentAudio = null;
+
+async function doSpeakText(text, onDone) {
+  // Stop any currently playing audio first
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio = null;
+  }
+
   var clean = cleanForSpeech(text);
-  synth.cancel();
-  setTimeout(function() {
-    if (!_ttsVoice) _loadVoice();
-    var utter = new SpeechSynthesisUtterance(clean);
-    utter.rate=1.1; utter.pitch=1.0; utter.volume=1.0;
-    if (_ttsVoice) utter.voice=_ttsVoice;
-    var keepalive = setInterval(function(){ if(synth.speaking){synth.resume();}else{clearInterval(keepalive);} },10000);
-    utter.onend=function(){ clearInterval(keepalive); if(onDone) onDone(); };
-    utter.onerror=function(){ clearInterval(keepalive); if(onDone) onDone(); };
-    synth.speak(utter);
-  }, 150);
+  if (!clean) {
+    if (onDone) onDone();
+    return;
+  }
+
+  try {
+    var res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: clean, voice: "onyx" }),
+    });
+
+    if (!res.ok) {
+      console.error("TTS API returned", res.status);
+      if (onDone) onDone();
+      return;
+    }
+
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    _currentAudio = new Audio(url);
+
+    _currentAudio.onended = function() {
+      URL.revokeObjectURL(url);
+      _currentAudio = null;
+      if (onDone) onDone();
+    };
+
+    _currentAudio.onerror = function() {
+      URL.revokeObjectURL(url);
+      _currentAudio = null;
+      if (onDone) onDone();
+    };
+
+    _currentAudio.play();
+  } catch (e) {
+    console.error("TTS error:", e);
+    _currentAudio = null;
+    if (onDone) onDone();
+  }
 }
 
-function doStopSpeaking() { window.speechSynthesis.cancel(); }
+function doStopSpeaking() {
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio.currentTime = 0;
+    _currentAudio = null;
+  }
+}
 
+// ── API call helper ──────────────────────────────────────────────────────────
 const callAPI = async function(prompt, system) {
   const res = await fetch("/api/gemini", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({system:system,messages:[{role:"user",content:prompt}]}) });
   if (!res.ok) { const err = await res.json().catch(function(){return{};}); throw new Error(err.error||"API error"); }
@@ -259,6 +296,7 @@ export default function App() {
   const [caseLoading, setCaseLoading] = useState(false);
   const [caseFeedbackMode, setCaseFeedbackMode] = useState(null);
   const [caseFeedbackText, setCaseFeedbackText] = useState("");
+  const [ttsLoading, setTtsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(function() { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({behavior:"smooth"}); }, [messages, caseMsgs]);
@@ -434,6 +472,24 @@ export default function App() {
     });
   };
 
+  // ── Play speech handler with loading state ─────────────────────────────────
+  const handlePlaySpeech = function(verbatimText) {
+    if (speaking) {
+      doStopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    setSpeaking(true);
+    setTtsLoading(true);
+    doSpeakText(verbatimText, function() {
+      setSpeaking(false);
+    });
+    // TTS loading clears once audio starts (small delay for fetch)
+    // We approximate by clearing after a short timeout since
+    // doSpeakText is async but the onDone fires on end
+    setTimeout(function() { setTtsLoading(false); }, 100);
+  };
+
   const canStart = setupSide && setupResText.trim();
   const userTurn = isUserTurn();
   const label = getInputLabel();
@@ -583,7 +639,7 @@ export default function App() {
                     {msg.role==="user"&&<div style={Object.assign({},s.msgTag,{color:"rgba(255,255,255,0.4)"})}>{userSide==="Affirmative"?"🎤 Aff":"🎤 Neg"}</div>}
                     {msg.role==="assistant"?<div>{formatMessage(msg.content)}</div>:<p style={{margin:0,lineHeight:1.6}}>{msg.content}</p>}
                     {msg.role==="assistant"&&msg.verbatim&&(
-                      <button style={{marginTop:10,padding:"7px 14px",borderRadius:7,border:"1px solid rgba(240,240,238,0.15)",background:"rgba(240,240,238,0.06)",color:RF.fg,fontSize:11,fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase"}} onClick={function(){doSpeakText(msg.verbatim);}}>▶ Play Speech</button>
+                      <button style={{marginTop:10,padding:"7px 14px",borderRadius:7,border:"1px solid rgba(240,240,238,0.15)",background: speaking ? "rgba(251,113,133,0.15)" : "rgba(240,240,238,0.06)",color:RF.fg,fontSize:11,fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase"}} onClick={function(){ handlePlaySpeech(msg.verbatim); }}>{speaking ? "⏹ Stop" : "▶ Play Speech"}</button>
                     )}
                   </div>
                 </div>;
@@ -625,6 +681,7 @@ export default function App() {
     );
   }
 
+  // ── Case Generator mode ────────────────────────────────────────────────────
   return (
     <div style={s.app}>
       <style>{GLOBAL_CSS}</style>
@@ -749,4 +806,3 @@ export default function App() {
     </div>
   );
 }
-
